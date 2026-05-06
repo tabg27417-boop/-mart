@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>#Mart — Quality Grocery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <a href="index.html" class="logo"><span class="logo-hash">#</span><span class="logo-text">Mart</span></a>
+      <p class="motto">Quality you trust, prices you can afford.</p>
+      <div class="header-actions">
+        <a href="admin.html" class="admin-link" title="Admin Panel">⚙️</a>
+        <button class="cart-btn" id="cartBtn" aria-label="Cart">
+          🛒 <span class="cart-count" id="cartCount">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- SEARCH + FILTER -->
+  <section class="controls">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search products…" autocomplete="off" />
+    </div>
+    <div class="categories" id="categories">
+      <button class="cat-btn active" data-cat="all">All</button>
+      <button class="cat-btn" data-cat="rice-grain">Rice & Grain</button>
+      <button class="cat-btn" data-cat="vegetables">Vegetables</button>
+      <button class="cat-btn" data-cat="fish">Fish</button>
+      <button class="cat-btn" data-cat="meat">Meat</button>
+      <button class="cat-btn" data-cat="oil-spice">Oil & Spice</button>
+      <button class="cat-btn" data-cat="dairy">Dairy</button>
+    </div>
+  </section>
+
+  <!-- LOADING STATE -->
+  <div class="loading-state" id="loadingState">
+    <div class="spinner"></div>
+    <p>Loading fresh products…</p>
+  </div>
+
+  <!-- PRODUCT GRID -->
+  <main class="grid-section hidden" id="gridSection">
+    <div class="product-grid" id="productGrid"></div>
+    <p class="no-results hidden" id="noResults">No products found. Try a different search!</p>
+    <p class="empty-store hidden" id="emptyStore">🛒 No products yet. <a href="admin.html">Admin: add products</a></p>
+  </main>
+
+  <!-- CART SIDEBAR -->
+  <div class="cart-overlay hidden" id="cartOverlay"></div>
+  <aside class="cart-panel" id="cartPanel">
+    <div class="cart-header">
+      <h2>Your Cart</h2>
+      <button class="close-btn" id="closeCart">✕</button>
+    </div>
+    <div class="cart-items" id="cartItems"></div>
+    <div class="cart-footer hidden" id="cartFooter">
+      <div class="cart-total" id="cartTotal"></div>
+      <button class="checkout-btn" id="checkoutBtn">Proceed to Order →</button>
+    </div>
+    <p class="cart-empty" id="cartEmpty">Your cart is empty!</p>
+  </aside>
+
+  <!-- ORDER MODAL -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal" id="orderModal">
+      <button class="modal-close" id="modalClose">✕</button>
+      <h2 class="modal-title">Place Your Order</h2>
+      <p class="modal-subtitle" id="modalSubtitle"></p>
+
+      <form id="orderForm" novalidate>
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="fullName" placeholder="e.g. Rahim Uddin" required />
+          <span class="err" id="err-name"></span>
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" id="phone" placeholder="01XXXXXXXXX" required />
+          <span class="err" id="err-phone"></span>
+        </div>
+        <div class="form-group">
+          <label>Delivery Address</label>
+          <textarea id="address" placeholder="Your full address…" rows="2" required></textarea>
+          <span class="err" id="err-address"></span>
+        </div>
+        <div class="form-group" id="singleProductRow">
+          <label>Product</label>
+          <input type="text" id="productName" readonly />
+        </div>
+        <div class="form-group" id="quantityRow">
+          <label>Quantity</label>
+          <div class="qty-control">
+            <button type="button" class="qty-btn" id="qtyMinus">−</button>
+            <input type="number" id="quantity" value="1" min="1" max="99" readonly />
+            <button type="button" class="qty-btn" id="qtyPlus">+</button>
+          </div>
+          <span class="err" id="err-qty"></span>
+        </div>
+        <div class="cart-summary" id="cartSummary"></div>
+        <button type="submit" class="submit-btn" id="submitBtn">
+          <span id="submitText">Send Order via Telegram</span>
+          <span id="submitLoader" class="loader hidden"></span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, query, orderBy }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { FIREBASE_CONFIG, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from "./config.js";
+
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db  = getFirestore(app);
+
+    // ── STATE ──
+    let allProducts    = [];
+    let cart           = [];
+    let currentMode    = "single";
+    let singleItem     = null;
+    let activeCategory = "all";
+    let searchQuery    = "";
+
+    // ── DOM ──
+    const grid          = document.getElementById("productGrid");
+    const noResults     = document.getElementById("noResults");
+    const emptyStore    = document.getElementById("emptyStore");
+    const gridSection   = document.getElementById("gridSection");
+    const loadingState  = document.getElementById("loadingState");
+    const searchInput   = document.getElementById("searchInput");
+    const cartBtn       = document.getElementById("cartBtn");
+    const cartCount     = document.getElementById("cartCount");
+    const cartOverlay   = document.getElementById("cartOverlay");
+    const cartPanel     = document.getElementById("cartPanel");
+    const closeCartBtn  = document.getElementById("closeCart");
+    const cartItemsEl   = document.getElementById("cartItems");
+    const cartFooter    = document.getElementById("cartFooter");
+    const cartTotal     = document.getElementById("cartTotal");
+    const cartEmpty     = document.getElementById("cartEmpty");
+    const checkoutBtn   = document.getElementById("checkoutBtn");
+    const modalOverlay  = document.getElementById("modalOverlay");
+    const modalClose    = document.getElementById("modalClose");
+    const modalSubtitle = document.getElementById("modalSubtitle");
+    const orderForm     = document.getElementById("orderForm");
+    const submitBtn     = document.getElementById("submitBtn");
+    const submitText    = document.getElementById("submitText");
+    const submitLoader  = document.getElementById("submitLoader");
+    const toast         = document.getElementById("toast");
+
+    // ── FIREBASE REALTIME LISTENER ──
+    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+    onSnapshot(q, snap => {
+      allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      loadingState.classList.add("hidden");
+      gridSection.classList.remove("hidden");
+      renderProducts();
+    }, err => {
+      loadingState.innerHTML = `<p style="color:#e53e3e">⚠️ Failed to load products. Check Firebase config.</p>`;
+      console.error(err);
+    });
+
+    // ── RENDER ──
+    function renderProducts() {
+      const filtered = allProducts.filter(p => {
+        const matchCat    = activeCategory === "all" || p.category === activeCategory;
+        const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchCat && matchSearch;
+      });
+
+      grid.innerHTML = "";
+      emptyStore.classList.add("hidden");
+      noResults.classList.add("hidden");
+
+      if (allProducts.length === 0) {
+        emptyStore.classList.remove("hidden");
+        return;
+      }
+      if (filtered.length === 0) {
+        noResults.classList.remove("hidden");
+        return;
+      }
+
+      filtered.forEach((p, i) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.style.animationDelay = `${i * 0.04}s`;
+        card.innerHTML = `
+          <div class="card-img-wrap">
+            <img src="${p.image}" alt="${p.name}" loading="lazy"
+                 onerror="this.src='https://placehold.co/300x300/e8f5ee/1a7a4a?text=📦'" />
+          </div>
+          <div class="card-body">
+            <div class="card-category">${formatCategory(p.category)}</div>
+            <div class="card-name">${p.name}</div>
+            <div class="card-price">৳${p.price} <span>/ ${p.unit}</span></div>
+            <div class="card-actions">
+              <button class="btn-order" data-id="${p.id}">Order Now</button>
+              <button class="btn-cart"  data-id="${p.id}" title="Add to cart">🛒</button>
+            </div>
+          </div>`;
+        grid.appendChild(card);
+      });
+
+      // event delegation
+      grid.querySelectorAll(".btn-order").forEach(b =>
+        b.addEventListener("click", () => openSingleOrder(b.dataset.id)));
+      grid.querySelectorAll(".btn-cart").forEach(b =>
+        b.addEventListener("click", () => addToCart(b.dataset.id)));
+    }
+
+    function formatCategory(cat) {
+      return { "rice-grain":"Rice & Grain", "vegetables":"Vegetables",
+               "fish":"Fish", "meat":"Meat", "oil-spice":"Oil & Spice",
+               "dairy":"Dairy" }[cat] || cat;
+    }
+
+    // ── CATEGORY ──
+    document.querySelectorAll(".cat-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeCategory = btn.dataset.cat;
+        renderProducts();
+      });
+    });
+
+    // ── SEARCH ──
+    searchInput.addEventListener("input", e => { searchQuery = e.target.value; renderProducts(); });
+
+    // ── CART ──
+    function addToCart(id) {
+      const product  = allProducts.find(p => p.id === id);
+      const existing = cart.find(c => c.product.id === id);
+      if (existing) existing.qty++;
+      else cart.push({ product, qty: 1 });
+      updateCartCount();
+      showToast(`Added ${product.name} to cart!`);
+    }
+
+    function updateCartCount() {
+      cartCount.textContent = cart.reduce((s, c) => s + c.qty, 0);
+    }
+
+    function renderCartPanel() {
+      cartItemsEl.innerHTML = "";
+      const hasItems = cart.length > 0;
+      cartEmpty.style.display  = hasItems ? "none"  : "block";
+      cartFooter.classList.toggle("hidden", !hasItems);
+
+      let grand = 0;
+      cart.forEach(({ product, qty }) => {
+        grand += product.price * qty;
+        const div = document.createElement("div");
+        div.className = "cart-item";
+        div.innerHTML = `
+          <img src="${product.image}" alt="${product.name}"
+               onerror="this.src='https://placehold.co/56x56/e8f5ee/1a7a4a?text=📦'" />
+          <div class="cart-item-info">
+            <div class="cart-item-name">${product.name}</div>
+            <div class="cart-item-price">৳${product.price} / ${product.unit}</div>
+            <div class="cart-item-qty">
+              <button class="qty-sm" data-id="${product.id}" data-d="-1">−</button>
+              <span class="qty-num">${qty}</span>
+              <button class="qty-sm" data-id="${product.id}" data-d="1">+</button>
+            </div>
+          </div>
+          <button class="cart-item-remove" data-id="${product.id}">🗑</button>`;
+        cartItemsEl.appendChild(div);
+      });
+      if (hasItems) cartTotal.textContent = `Total: ৳${grand}`;
+
+      cartItemsEl.querySelectorAll(".qty-sm").forEach(b =>
+        b.addEventListener("click", () => changeCartQty(b.dataset.id, parseInt(b.dataset.d))));
+      cartItemsEl.querySelectorAll(".cart-item-remove").forEach(b =>
+        b.addEventListener("click", () => removeFromCart(b.dataset.id)));
+    }
+
+    function changeCartQty(id, delta) {
+      const item = cart.find(c => c.product.id === id);
+      if (!item) return;
+      item.qty += delta;
+      if (item.qty <= 0) removeFromCart(id);
+      else { updateCartCount(); renderCartPanel(); }
+    }
+
+    function removeFromCart(id) {
+      cart = cart.filter(c => c.product.id !== id);
+      updateCartCount(); renderCartPanel();
+    }
+
+    cartBtn.addEventListener("click", () => { renderCartPanel(); openCartPanel(); });
+    function openCartPanel()  { cartPanel.classList.add("open"); cartOverlay.classList.remove("hidden"); }
+    function closeCartPanel() { cartPanel.classList.remove("open"); cartOverlay.classList.add("hidden"); }
+    closeCartBtn.addEventListener("click", closeCartPanel);
+    cartOverlay.addEventListener("click", closeCartPanel);
+
+    checkoutBtn.addEventListener("click", () => {
+      if (!cart.length) return;
+      closeCartPanel();
+      openCartOrder();
+    });
+
+    // ── ORDER MODAL ──
+    function openSingleOrder(id) {
+      singleItem  = allProducts.find(p => p.id === id);
+      currentMode = "single";
+      document.getElementById("singleProductRow").classList.remove("hidden");
+      document.getElementById("quantityRow").classList.remove("hidden");
+      document.getElementById("productName").value = `${singleItem.name} (${singleItem.unit})`;
+      document.getElementById("quantity").value    = 1;
+      document.getElementById("cartSummary").classList.remove("show");
+      modalSubtitle.textContent = `${singleItem.name} — ৳${singleItem.price}`;
+      openModal();
+    }
+
+    function openCartOrder() {
+      currentMode = "cart";
+      document.getElementById("singleProductRow").classList.add("hidden");
+      document.getElementById("quantityRow").classList.add("hidden");
+      let html = "", grand = 0;
+      cart.forEach(({ product, qty }) => {
+        const sub = product.price * qty; grand += sub;
+        html += `<div class="summary-item"><span>${product.name} × ${qty}</span><span>৳${sub}</span></div>`;
+      });
+      html += `<div class="summary-total"><span>Total</span><span>৳${grand}</span></div>`;
+      const s = document.getElementById("cartSummary");
+      s.innerHTML = html; s.classList.add("show");
+      modalSubtitle.textContent = `${cart.length} item(s) in your cart`;
+      openModal();
+    }
+
+    function openModal() {
+      orderForm.reset(); clearErrors();
+      if (currentMode === "single") document.getElementById("quantity").value = 1;
+      modalOverlay.classList.remove("hidden");
+      setTimeout(() => document.getElementById("fullName").focus(), 100);
+    }
+
+    modalClose.addEventListener("click", () => modalOverlay.classList.add("hidden"));
+    modalOverlay.addEventListener("click", e => { if (e.target === modalOverlay) modalOverlay.classList.add("hidden"); });
+
+    document.getElementById("qtyMinus").addEventListener("click", () => {
+      const el = document.getElementById("quantity");
+      el.value = Math.max(1, parseInt(el.value) - 1);
+    });
+    document.getElementById("qtyPlus").addEventListener("click", () => {
+      const el = document.getElementById("quantity");
+      el.value = Math.min(99, parseInt(el.value) + 1);
+    });
+
+    // ── SUBMIT ──
+    orderForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!validateForm()) return;
+      const name    = document.getElementById("fullName").value.trim();
+      const phone   = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
+      let msg = "";
+      if (currentMode === "single") {
+        const qty = parseInt(document.getElementById("quantity").value);
+        msg = `🛒 *New Order — #Mart*\n\n📦 *Product:* ${singleItem.name} (${singleItem.unit})\n🔢 *Qty:* ${qty}\n💵 *Total:* ৳${singleItem.price * qty}\n\n👤 *Name:* ${name}\n📞 *Phone:* ${phone}\n📍 *Address:* ${address}`;
+      } else {
+        let lines = "", grand = 0;
+        cart.forEach(({ product, qty }) => { const s = product.price*qty; grand+=s; lines+=`• ${product.name} ×${qty} = ৳${s}\n`; });
+        msg = `🛒 *New Order — #Mart*\n\n📦 *Items:*\n${lines}\n💵 *Grand Total:* ৳${grand}\n\n👤 *Name:* ${name}\n📞 *Phone:* ${phone}\n📍 *Address:* ${address}`;
+      }
+      setLoading(true);
+      try {
+        await sendTelegram(msg);
+        modalOverlay.classList.add("hidden");
+        showToast("✅ Order placed! We'll contact you soon.");
+        if (currentMode === "cart") { cart = []; updateCartCount(); }
+      } catch(err) {
+        showToast("⚠️ Failed to send. Check Telegram config.");
+      } finally { setLoading(false); }
+    });
+
+    async function sendTelegram(text) {
+      const r = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: "Markdown" })
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.description);
+    }
+
+    // ── VALIDATION ──
+    function validateForm() {
+      clearErrors(); let ok = true;
+      const name    = document.getElementById("fullName").value.trim();
+      const phone   = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
+      if (name.length < 2)                          { showErr("err-name",    "Enter your full name.");         ok=false; }
+      if (!/^\+?[0-9]{7,15}$/.test(phone))          { showErr("err-phone",   "Enter a valid phone number.");   ok=false; }
+      if (address.length < 5)                        { showErr("err-address", "Enter your delivery address.");  ok=false; }
+      if (currentMode==="single" && parseInt(document.getElementById("quantity").value)<1)
+                                                     { showErr("err-qty",     "Quantity must be at least 1.");  ok=false; }
+      return ok;
+    }
+    function showErr(id, m) { const el=document.getElementById(id); if(el) el.textContent=m; }
+    function clearErrors()  { ["err-name","err-phone","err-address","err-qty"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="";}); }
+    function setLoading(on) { submitBtn.disabled=on; submitText.classList.toggle("hidden",on); submitLoader.classList.toggle("hidden",!on); }
+
+    let toastTimer;
+    function showToast(msg) {
+      toast.textContent = msg; toast.classList.remove("hidden");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.add("hidden"), 3500);
+    }
+  </script>
+</body>
+  </html>
