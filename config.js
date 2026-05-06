@@ -7,16 +7,19 @@
 // ── FIREBASE ─────────────────────────────────────────────────
 // Get these from: Firebase Console → Project Settings → Your apps → SDK config
 export const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+   
+   apiKey: "AIzaSyDPJTjfsc20MpZeXQU6XHVORr5_5MOLl4E",
+   authDomain: "mart-3574d.firebaseapp.com",
+   projectId: "mart-3574d",
+   storageBucket: "mart-3574d.firebasestorage.app",
+   messagingSenderId: "326148856797",
+   appId: "1:326148856797:web:c5e60584876ce6b9e0f434",
+   measurementId: "G-3G8JE4926W"
+
 };
 
 // ── TELEGRAM ─────────────────────────────────────────────────
 // Get Bot Token from @BotFather on Telegram
 // Group Chat ID: negative IDs (starting with -100) indicate supergroups/channels
-export const TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE";
+export const TELEGRAM_BOT_TOKEN = "8792877633:AAGJdtQjtTnFW6jzmepFrruE-cDF6hkBsyU";
 export const TELEGRAM_CHAT_ID   = "-1003950234328";
