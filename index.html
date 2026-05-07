@@ -8,6 +8,71 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ── HERO BANNER ── */
+    .hero-banner {
+      width: 100%;
+      background: #f0f9f0;
+      overflow: hidden;
+      line-height: 0;
+    }
+    .hero-banner-img {
+      width: 100%;
+      max-height: 420px;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+
+    /* ── CATEGORY SECTIONS ── */
+    .category-sections {
+      padding: 0 1.5rem 3rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .cat-section {
+      margin-bottom: 2.5rem;
+    }
+    .cat-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid #e6f4ec;
+      padding-bottom: 0.5rem;
+    }
+    .cat-section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #1a7a4a;
+      margin: 0;
+    }
+    .cat-see-all {
+      background: none;
+      border: 1.5px solid #1a7a4a;
+      color: #1a7a4a;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .cat-see-all:hover {
+      background: #1a7a4a;
+      color: #fff;
+    }
+    .cat-section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+    @media (max-width: 600px) {
+      .hero-banner-img { max-height: 200px; }
+      .cat-section-grid { grid-template-columns: repeat(2, 1fr); }
+      .category-sections { padding: 0 0.75rem 2rem; }
+    }
+  </style>
 </head>
 <body>
 
@@ -24,6 +89,11 @@
       </div>
     </div>
   </header>
+
+  <!-- HERO BANNER -->
+  <section class="hero-banner">
+    <img src="banner.png" alt="#Mart Fresh Grocery Delivery" class="hero-banner-img" />
+  </section>
 
   <!-- SEARCH + FILTER -->
   <section class="controls">
@@ -54,6 +124,9 @@
     <p class="no-results hidden" id="noResults">No products found. Try a different search!</p>
     <p class="empty-store hidden" id="emptyStore">🛒 No products yet. <a href="admin.html">Admin: add products</a></p>
   </main>
+
+  <!-- CATEGORY-WISE SECTIONS -->
+  <div class="category-sections hidden" id="categorySections"></div>
 
   <!-- CART SIDEBAR -->
   <div class="cart-overlay hidden" id="cartOverlay"></div>
@@ -108,7 +181,7 @@
         </div>
         <div class="cart-summary" id="cartSummary"></div>
         <button type="submit" class="submit-btn" id="submitBtn">
-          <span id="submitText">Send Order via Telegram</span>
+          <span id="submitText">Send Order </span>
           <span id="submitLoader" class="loader hidden"></span>
         </button>
       </form>
@@ -142,6 +215,7 @@
     const emptyStore    = document.getElementById("emptyStore");
     const gridSection   = document.getElementById("gridSection");
     const loadingState  = document.getElementById("loadingState");
+    const categorySections = document.getElementById("categorySections");
     const searchInput   = document.getElementById("searchInput");
     const cartBtn       = document.getElementById("cartBtn");
     const cartCount     = document.getElementById("cartCount");
@@ -169,12 +243,82 @@
       loadingState.classList.add("hidden");
       gridSection.classList.remove("hidden");
       renderProducts();
+      renderCategorySections();
     }, err => {
       loadingState.innerHTML = `<p style="color:#e53e3e">⚠️ Failed to load products. Check Firebase config.</p>`;
       console.error(err);
     });
 
     // ── RENDER ──
+    function renderCategorySections() {
+      if (allProducts.length === 0) { categorySections.classList.add("hidden"); return; }
+      const CATEGORY_ORDER = [
+        { key: "rice-grain",  label: "🌾 Rice & Grain" },
+        { key: "vegetables",  label: "🥦 Vegetables" },
+        { key: "fish",        label: "🐟 Fish" },
+        { key: "meat",        label: "🥩 Meat" },
+        { key: "oil-spice",   label: "🫙 Oil & Spice" },
+        { key: "dairy",       label: "🥛 Dairy" },
+      ];
+      categorySections.innerHTML = "";
+      let hasAny = false;
+      CATEGORY_ORDER.forEach(({ key, label }) => {
+        const items = allProducts.filter(p => p.category === key);
+        if (!items.length) return;
+        hasAny = true;
+        const section = document.createElement("div");
+        section.className = "cat-section";
+        section.innerHTML = `
+          <div class="cat-section-header">
+            <h2 class="cat-section-title">${label}</h2>
+            <button class="cat-see-all" data-cat="${key}">See All →</button>
+          </div>
+          <div class="cat-section-grid" id="cat-grid-${key}"></div>`;
+        categorySections.appendChild(section);
+        const catGrid = section.querySelector(`#cat-grid-${key}`);
+        items.slice(0, 6).forEach((p, i) => {
+          const card = document.createElement("div");
+          card.className = "card";
+          card.style.animationDelay = `${i * 0.04}s`;
+          card.innerHTML = buildCardHTML(p);
+          catGrid.appendChild(card);
+        });
+        catGrid.querySelectorAll(".btn-order").forEach(b =>
+          b.addEventListener("click", () => openSingleOrder(b.dataset.id)));
+        catGrid.querySelectorAll(".btn-cart").forEach(b =>
+          b.addEventListener("click", () => addToCart(b.dataset.id)));
+      });
+      if (hasAny) {
+        categorySections.classList.remove("hidden");
+        categorySections.querySelectorAll(".cat-see-all").forEach(btn => {
+          btn.addEventListener("click", () => {
+            document.querySelectorAll(".cat-btn").forEach(b => b.classList.remove("active"));
+            const target = document.querySelector(`.cat-btn[data-cat="${btn.dataset.cat}"]`);
+            if (target) { target.classList.add("active"); activeCategory = btn.dataset.cat; }
+            renderProducts();
+            document.querySelector(".controls").scrollIntoView({ behavior: "smooth" });
+          });
+        });
+      }
+    }
+
+    function buildCardHTML(p) {
+      return `
+        <div class="card-img-wrap">
+          <img src="${p.image}" alt="${p.name}" loading="lazy"
+               onerror="this.src='https://placehold.co/300x300/e8f5ee/1a7a4a?text=📦'" />
+        </div>
+        <div class="card-body">
+          <div class="card-category">${formatCategory(p.category)}</div>
+          <div class="card-name">${p.name}</div>
+          <div class="card-price">৳${p.price} <span>/ ${p.unit}</span></div>
+          <div class="card-actions">
+            <button class="btn-order" data-id="${p.id}">Order Now</button>
+            <button class="btn-cart"  data-id="${p.id}" title="Add to cart">কার্টে যোগ</button>
+          </div>
+        </div>`;
+    }
+
     function renderProducts() {
       const filtered = allProducts.filter(p => {
         const matchCat    = activeCategory === "all" || p.category === activeCategory;
@@ -199,20 +343,7 @@
         const card = document.createElement("div");
         card.className = "card";
         card.style.animationDelay = `${i * 0.04}s`;
-        card.innerHTML = `
-          <div class="card-img-wrap">
-            <img src="${p.image}" alt="${p.name}" loading="lazy"
-                 onerror="this.src='https://placehold.co/300x300/e8f5ee/1a7a4a?text=📦'" />
-          </div>
-          <div class="card-body">
-            <div class="card-category">${formatCategory(p.category)}</div>
-            <div class="card-name">${p.name}</div>
-            <div class="card-price">৳${p.price} <span>/ ${p.unit}</span></div>
-            <div class="card-actions">
-              <button class="btn-order" data-id="${p.id}">Order Now</button>
-              <button class="btn-cart"  data-id="${p.id}" title="Add to cart">🛒</button>
-            </div>
-          </div>`;
+        card.innerHTML = buildCardHTML(p);
         grid.appendChild(card);
       });
 
