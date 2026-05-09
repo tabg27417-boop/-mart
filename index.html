@@ -1534,7 +1534,7 @@
       const mrpEl = document.getElementById("productModalMRP");
       const savEl = document.getElementById("productModalSavings");
       if (hasMRP) {
-        mrpEl.innerHTML = `<del>MRP: ৳${p.mrp} / ${p.unit}</del>`;
+        mrpEl.innerHTML = `<del>MRP: ৳${p.mrp}</del>`;
         mrpEl.classList.remove("hidden");
         savEl.textContent = `🎉 আপনি বাঁচিয়েছেন ৳${p.mrp - p.price}`;
         savEl.classList.remove("hidden");
