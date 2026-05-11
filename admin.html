@@ -49,6 +49,53 @@
       .sidebar-close  { display: block; }
       .dash-main      { padding-top: 68px; } /* clear topbar height */
     }
+
+    /* ── VARIANTS SECTION ──────────────────────────────────── */
+    .variants-section {
+      margin: 1.25rem 0 0;
+      background: #f6fdf9;
+      border: 1.5px dashed #a7d9bc;
+      border-radius: 12px;
+      padding: 1rem 1.1rem 1.1rem;
+    }
+    .variants-header { margin-bottom: 0.85rem; }
+    .variants-title {
+      font-weight: 700; font-size: 0.93rem;
+      color: var(--green); display: block; margin-bottom: 4px;
+    }
+    .variants-hint {
+      font-size: 0.78rem; color: #6b7280; line-height: 1.5;
+    }
+    .variants-grid {
+      display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .variant-row {
+      background: #fff;
+      border: 1px solid #d1f0e0;
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem 0.6rem;
+    }
+    .variant-label {
+      font-size: 0.78rem; font-weight: 700;
+      color: var(--green); text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 0.5rem;
+    }
+    .variant-fields {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    }
+    @media (max-width: 500px) { .variant-fields { grid-template-columns: 1fr; } }
+    .variant-fields .form-group { margin: 0; }
+    .variant-fields label { font-size: 0.78rem; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+    .auto-badge {
+      background: #e8f5ee; color: var(--green);
+      font-size: 0.62rem; font-weight: 700;
+      padding: 1px 6px; border-radius: 20px;
+      letter-spacing: 0.04em;
+      transition: background 0.2s, color 0.2s;
+    }
+    .auto-badge.calculated {
+      background: var(--green); color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -214,6 +261,58 @@
           <div class="form-group">
             <label>Description <span class="muted">(optional)</span></label>
             <textarea id="pDescription" rows="2" placeholder="Short product description…"></textarea>
+          </div>
+
+          <!-- ── SUB-QUANTITY VARIANTS (optional) ── -->
+          <div class="variants-section">
+            <div class="variants-header">
+              <span class="variants-title">⚖️ Sub-Quantity Options <span class="muted">(optional)</span></span>
+              <span class="variants-hint">Enter the main quantity & price above (e.g. 1kg / ৳120), then set up to 3 smaller options below — prices auto-calculate.</span>
+            </div>
+            <div class="variants-grid" id="variantsGrid">
+              <!-- Variant 1 -->
+              <div class="variant-row" id="variantRow1">
+                <div class="variant-label">Option 1</div>
+                <div class="variant-fields">
+                  <div class="form-group">
+                    <label>Quantity Label</label>
+                    <input type="text" id="vQty1" placeholder="e.g. 50gm" maxlength="20" />
+                  </div>
+                  <div class="form-group">
+                    <label>Price (৳) <span class="auto-badge" id="autoBadge1">auto</span></label>
+                    <input type="number" id="vPrice1" placeholder="Auto-calculated" min="0" step="0.01" />
+                  </div>
+                </div>
+              </div>
+              <!-- Variant 2 -->
+              <div class="variant-row" id="variantRow2">
+                <div class="variant-label">Option 2</div>
+                <div class="variant-fields">
+                  <div class="form-group">
+                    <label>Quantity Label</label>
+                    <input type="text" id="vQty2" placeholder="e.g. 150gm" maxlength="20" />
+                  </div>
+                  <div class="form-group">
+                    <label>Price (৳) <span class="auto-badge" id="autoBadge2">auto</span></label>
+                    <input type="number" id="vPrice2" placeholder="Auto-calculated" min="0" step="0.01" />
+                  </div>
+                </div>
+              </div>
+              <!-- Variant 3 -->
+              <div class="variant-row" id="variantRow3">
+                <div class="variant-label">Option 3</div>
+                <div class="variant-fields">
+                  <div class="form-group">
+                    <label>Quantity Label</label>
+                    <input type="text" id="vQty3" placeholder="e.g. 200gm" maxlength="20" />
+                  </div>
+                  <div class="form-group">
+                    <label>Price (৳) <span class="auto-badge" id="autoBadge3">auto</span></label>
+                    <input type="number" id="vPrice3" placeholder="Auto-calculated" min="0" step="0.01" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="form-actions">
@@ -448,6 +547,53 @@
       else       imgPreviewWrap.style.display = "none";
     });
 
+    // ─── VARIANT AUTO-CALC ───────────────────────────────────────
+    // Parse a quantity string into grams (or ml), returns null if can't parse
+    function parseQtyToGrams(str) {
+      if (!str) return null;
+      const s = str.trim().toLowerCase().replace(/\s+/g, "");
+      const match = s.match(/^([\d.]+)(kg|g|gm|gram|grams|l|liter|litre|ml|piece|pc|pcs)?$/);
+      if (!match) return null;
+      const num = parseFloat(match[1]);
+      const unit = match[2] || "";
+      if (unit === "kg" || unit === "l" || unit === "liter" || unit === "litre") return num * 1000;
+      return num; // g, gm, gram, grams, ml, piece, pc, pcs, or bare number
+    }
+
+    function recalcVariantPrices() {
+      const mainPrice = parseFloat(document.getElementById("pPrice").value);
+      const mainUnit  = document.getElementById("pUnit").value.trim();
+      if (!mainPrice || mainPrice <= 0) return;
+      const mainGrams = parseQtyToGrams(mainUnit);
+      if (!mainGrams) return;
+
+      [1, 2, 3].forEach(i => {
+        const qtyInput   = document.getElementById(`vQty${i}`);
+        const priceInput = document.getElementById(`vPrice${i}`);
+        const badge      = document.getElementById(`autoBadge${i}`);
+        const varGrams   = parseQtyToGrams(qtyInput.value);
+        if (varGrams && varGrams > 0) {
+          const calculated = Math.round((mainPrice / mainGrams) * varGrams * 100) / 100;
+          priceInput.value = calculated;
+          badge.textContent = "auto ✓";
+          badge.classList.add("calculated");
+        }
+      });
+    }
+
+    // Trigger recalc whenever main price/unit or a variant qty changes
+    ["pPrice", "pUnit"].forEach(id =>
+      document.getElementById(id).addEventListener("input", recalcVariantPrices));
+    [1, 2, 3].forEach(i => {
+      const qi = document.getElementById(`vQty${i}`);
+      qi.addEventListener("input", recalcVariantPrices);
+      // Allow manual override — just remove "auto" badge style
+      document.getElementById(`vPrice${i}`).addEventListener("input", () => {
+        document.getElementById(`autoBadge${i}`).textContent = "manual";
+        document.getElementById(`autoBadge${i}`).classList.remove("calculated");
+      });
+    });
+
     // ─── ADD / EDIT PRODUCT ───────────────────────────────────────
     const productForm         = document.getElementById("productForm");
     const formTitle           = document.getElementById("formTitle");
@@ -470,6 +616,21 @@
       productSubmitText.textContent = "Update Product";
       imgPreview.src = p.image;
       imgPreviewWrap.style.display = "block";
+
+      // Load variants
+      const variants = p.variants || [];
+      [1, 2, 3].forEach(i => {
+        const v = variants[i - 1] || {};
+        document.getElementById(`vQty${i}`).value   = v.qty   || "";
+        document.getElementById(`vPrice${i}`).value = v.price || "";
+        const badge = document.getElementById(`autoBadge${i}`);
+        if (v.qty && v.price) {
+          badge.textContent = "saved"; badge.classList.add("calculated");
+        } else {
+          badge.textContent = "auto"; badge.classList.remove("calculated");
+        }
+      });
+
       switchTab("add");
     }
 
@@ -481,6 +642,13 @@
       productSubmitText.textContent = "Save Product";
       imgPreviewWrap.style.display = "none";
       clearPErrors();
+      // Reset variant fields
+      [1, 2, 3].forEach(i => {
+        document.getElementById(`vQty${i}`).value   = "";
+        document.getElementById(`vPrice${i}`).value = "";
+        const badge = document.getElementById(`autoBadge${i}`);
+        badge.textContent = "auto"; badge.classList.remove("calculated");
+      });
     }
 
     productForm.addEventListener("submit", async e => {
@@ -490,6 +658,15 @@
       productSubmitText.classList.add("hidden");
 
       const mrpVal = parseFloat(document.getElementById("pMRP").value);
+      // Collect variants (only include rows where qty label is filled)
+      const variants = [];
+      [1, 2, 3].forEach(i => {
+        const qty   = document.getElementById(`vQty${i}`).value.trim();
+        const price = parseFloat(document.getElementById(`vPrice${i}`).value);
+        if (qty && !isNaN(price) && price > 0) {
+          variants.push({ qty, price });
+        }
+      });
       const data = {
         name:        document.getElementById("pName").value.trim(),
         category:    document.getElementById("pCategory").value,
@@ -498,6 +675,7 @@
         unit:        document.getElementById("pUnit").value.trim(),
         image:       document.getElementById("pImage").value.trim(),
         description: document.getElementById("pDescription").value.trim(),
+        variants:    variants,
       };
 
       try {
@@ -583,4 +761,4 @@
     }
   </script>
 </body>
-</html>
+  </html>
