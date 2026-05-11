@@ -626,6 +626,61 @@
     }
     .product-modal-close:hover { background: rgba(0,0,0,0.7); }
 
+    /* ── VARIANT SIZE SELECTOR ── */
+    .variant-selector {
+      margin-bottom: 1rem;
+    }
+    .variant-selector-label {
+      font-size: 0.8rem; font-weight: 700;
+      color: var(--muted); margin-bottom: 6px;
+      display: block;
+    }
+    .variant-chips {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .variant-chip {
+      background: var(--green-light); color: var(--green);
+      border: 1.5px solid #a7d9bc;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .variant-chip:hover { background: #c7e9d8; border-color: var(--green); }
+    .variant-chip.active {
+      background: var(--green); color: #fff;
+      border-color: var(--green);
+    }
+    .variant-chip .vc-price {
+      font-size: 0.75rem; font-weight: 500; opacity: 0.85;
+    }
+
+    /* card variant chips (small) */
+    .card-variants {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      margin-bottom: 6px;
+    }
+    .card-variant-chip {
+      background: var(--green-light); color: var(--green);
+      border: 1px solid #a7d9bc; border-radius: 6px;
+      padding: 2px 7px; font-size: 0.68rem; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .card-variant-chip:hover, .card-variant-chip.active {
+      background: var(--green); color: #fff; border-color: var(--green);
+    }
+
+    /* cart item variant tag */
+    .cart-item-variant {
+      display: inline-block;
+      background: var(--green-light); color: var(--green);
+      font-size: 0.68rem; font-weight: 700;
+      padding: 1px 7px; border-radius: 20px;
+      margin-left: 4px;
+    }
+
     /* ── CARD IMAGE CURSOR ── */
     .card-img-wrap { cursor: pointer; }
     .card-img-wrap::after {
@@ -1136,6 +1191,10 @@
         <div class="product-modal-price" id="productModalPrice"></div>
         <div class="product-modal-savings hidden" id="productModalSavings"></div>
         <div class="product-modal-desc hidden" id="productModalDesc"></div>
+        <div class="variant-selector hidden" id="productModalVariants">
+          <span class="variant-selector-label">📦 Choose Size / Quantity:</span>
+          <div class="variant-chips" id="productModalVariantChips"></div>
+        </div>
         <div class="product-modal-qty-row">
           <span class="product-modal-qty-label">Qty:</span>
           <button class="modal-qty-btn" id="pmQtyMinus">−</button>
@@ -1455,6 +1514,17 @@
     function buildCardHTML(p) {
       const hasMRP = p.mrp && p.mrp > p.price;
       const savings = hasMRP ? (p.mrp - p.price) : 0;
+      const hasVariants = p.variants && p.variants.length > 0;
+      const variantChipsHTML = hasVariants ? `
+        <div class="card-variants" data-id="${p.id}">
+          <span class="card-variant-chip active" data-id="${p.id}" data-vi="-1" title="${p.unit} — ৳${p.price}">
+            ${p.unit}
+          </span>
+          ${p.variants.map((v, i) => `
+            <span class="card-variant-chip" data-id="${p.id}" data-vi="${i}" title="${v.qty} — ৳${v.price}">
+              ${v.qty}
+            </span>`).join("")}
+        </div>` : "";
       return `
         <div class="card-img-wrap" data-id="${p.id}" title="View details">
           <img src="${p.image}" alt="${p.name}" loading="lazy"
@@ -1464,19 +1534,50 @@
           <div class="card-category">${formatCategory(p.category)}</div>
           <div class="card-name">${p.name}</div>
           ${hasMRP ? `<del class="card-mrp">৳${p.mrp} / ${p.unit}</del>` : ""}
-          <div class="card-price">৳${p.price} <span>/ ${p.unit}</span></div>
+          <div class="card-price" id="card-price-${p.id}">৳${p.price} <span>/ ${p.unit}</span></div>
           ${hasMRP ? `<span class="card-savings">বাঁচাচ্ছেন ৳${savings}</span>` : ""}
+          ${variantChipsHTML}
           <div class="card-actions">
             <button class="btn-order" data-id="${p.id}">🛒 Add to Cart</button>
           </div>
         </div>`;
     }
 
+    // Tracks selected variant index per product (card level): -1 = main
+    const cardSelectedVariant = {};
+
     function attachCardEvents(container) {
       container.querySelectorAll(".card-img-wrap").forEach(el =>
         el.addEventListener("click", () => openProductModal(el.dataset.id)));
+
+      // Variant chip clicks on cards
+      container.querySelectorAll(".card-variant-chip").forEach(chip => {
+        chip.addEventListener("click", e => {
+          e.stopPropagation();
+          const pid = chip.dataset.id;
+          const vi  = parseInt(chip.dataset.vi);
+          const p   = allProducts.find(x => x.id === pid);
+          if (!p) return;
+          cardSelectedVariant[pid] = vi;
+          // Update active chip
+          container.querySelectorAll(`.card-variant-chip[data-id="${pid}"]`)
+            .forEach(c => c.classList.toggle("active", parseInt(c.dataset.vi) === vi));
+          // Update displayed price
+          const priceEl = container.querySelector(`#card-price-${pid}`);
+          if (priceEl) {
+            const displayPrice = vi === -1 ? p.price : p.variants[vi].price;
+            const displayUnit  = vi === -1 ? p.unit  : p.variants[vi].qty;
+            priceEl.innerHTML  = `৳${displayPrice} <span>/ ${displayUnit}</span>`;
+          }
+        });
+      });
+
       container.querySelectorAll(".btn-order").forEach(b =>
-        b.addEventListener("click", () => addToCart(b.dataset.id)));
+        b.addEventListener("click", () => {
+          const pid = b.dataset.id;
+          const vi  = cardSelectedVariant[pid] !== undefined ? cardSelectedVariant[pid] : -1;
+          addToCartWithVariant(pid, vi);
+        }));
     }
 
     function renderProducts() {
@@ -1534,12 +1635,14 @@
     // ── PRODUCT DETAIL MODAL ──
     let pmCurrentId = null;
     let pmQty = 1;
+    let pmSelectedVariantIndex = -1; // -1 = main unit
 
     function openProductModal(id) {
       const p = allProducts.find(x => x.id === id);
       if (!p) return;
       pmCurrentId = id;
       pmQty = 1;
+      pmSelectedVariantIndex = -1;
       document.getElementById("pmQtyNum").textContent = 1;
       document.getElementById("productModalImg").src = p.image;
       document.getElementById("productModalImg").alt = p.name;
@@ -1570,7 +1673,48 @@
         descEl.classList.add("hidden");
       }
 
+      // Variants
+      const variantsEl  = document.getElementById("productModalVariants");
+      const varChipsEl  = document.getElementById("productModalVariantChips");
+      if (p.variants && p.variants.length > 0) {
+        varChipsEl.innerHTML = "";
+        // Main option chip
+        const mainChip = document.createElement("button");
+        mainChip.className = "variant-chip active";
+        mainChip.dataset.vi = "-1";
+        mainChip.innerHTML = `${p.unit} <span class="vc-price">৳${p.price}</span>`;
+        mainChip.addEventListener("click", () => selectModalVariant(p, -1));
+        varChipsEl.appendChild(mainChip);
+        // Sub-option chips
+        p.variants.forEach((v, i) => {
+          const chip = document.createElement("button");
+          chip.className = "variant-chip";
+          chip.dataset.vi = i;
+          chip.innerHTML = `${v.qty} <span class="vc-price">৳${v.price}</span>`;
+          chip.addEventListener("click", () => selectModalVariant(p, i));
+          varChipsEl.appendChild(chip);
+        });
+        variantsEl.classList.remove("hidden");
+      } else {
+        variantsEl.classList.add("hidden");
+      }
+
       document.getElementById("productModalOverlay").classList.remove("hidden");
+    }
+
+    function selectModalVariant(p, vi) {
+      pmSelectedVariantIndex = vi;
+      // Update chips
+      document.querySelectorAll("#productModalVariantChips .variant-chip").forEach(c =>
+        c.classList.toggle("active", parseInt(c.dataset.vi) === vi));
+      // Update price display
+      const priceEl = document.getElementById("productModalPrice");
+      if (vi === -1) {
+        priceEl.innerHTML = `৳${p.price} <span>/ ${p.unit}</span>`;
+      } else {
+        const v = p.variants[vi];
+        priceEl.innerHTML = `৳${v.price} <span>/ ${v.qty}</span>`;
+      }
     }
 
     document.getElementById("productModalClose").addEventListener("click", () => {
@@ -1591,23 +1735,35 @@
     document.getElementById("productModalATC").addEventListener("click", () => {
       if (!pmCurrentId) return;
       const product = allProducts.find(p => p.id === pmCurrentId);
-      const existing = cart.find(c => c.product.id === pmCurrentId);
+      const vi = pmSelectedVariantIndex;
+      const cartKey = vi === -1 ? pmCurrentId : `${pmCurrentId}__v${vi}`;
+      const displayUnit  = vi === -1 ? product.unit  : product.variants[vi].qty;
+      const displayPrice = vi === -1 ? product.price : product.variants[vi].price;
+      const cartProduct  = { ...product, price: displayPrice, unit: displayUnit, _cartKey: cartKey };
+      const existing = cart.find(c => c.product._cartKey === cartKey);
       if (existing) existing.qty += pmQty;
-      else cart.push({ product, qty: pmQty });
+      else cart.push({ product: cartProduct, qty: pmQty });
       updateCartCount();
-      showToast(`✅ ${pmQty}× ${product.name} added to cart!`);
+      showToast(`✅ ${pmQty}× ${product.name} (${displayUnit}) added to cart!`);
       document.getElementById("productModalOverlay").classList.add("hidden");
     });
 
     // ── CART ──
-    function addToCart(id) {
+    function addToCartWithVariant(id, vi) {
       const product  = allProducts.find(p => p.id === id);
-      const existing = cart.find(c => c.product.id === id);
+      if (!product) return;
+      const cartKey      = vi === -1 ? id : `${id}__v${vi}`;
+      const displayUnit  = vi === -1 ? product.unit  : product.variants[vi].qty;
+      const displayPrice = vi === -1 ? product.price : product.variants[vi].price;
+      const cartProduct  = { ...product, price: displayPrice, unit: displayUnit, _cartKey: cartKey };
+      const existing = cart.find(c => c.product._cartKey === cartKey);
       if (existing) existing.qty++;
-      else cart.push({ product, qty: 1 });
+      else cart.push({ product: cartProduct, qty: 1 });
       updateCartCount();
-      showToast(`Added ${product.name} to cart!`);
+      showToast(`Added ${product.name} (${displayUnit}) to cart!`);
     }
+    // Legacy fallback used by old code
+    function addToCart(id) { addToCartWithVariant(id, -1); }
     function updateCartCount() {
       const totalQty = cart.reduce((s, c) => s + c.qty, 0);
       const totalAmt = cart.reduce((s, c) => s + c.product.price * c.qty, 0);
@@ -1701,26 +1857,30 @@
         const div = document.createElement("div");
         div.className = "co-item";
         const hasMRP = product.mrp && product.mrp > product.price;
+        const cartKey = product._cartKey || product.id;
+        // Show variant badge if this is a sub-qty item
+        const isVariant = cartKey.includes("__v");
+        const variantTag = isVariant ? `<span class="cart-item-variant">📦 ${product.unit}</span>` : "";
         div.innerHTML = `
           <img src="${product.image}" alt="${product.name}"
                onerror="this.src='https://placehold.co/52x52/e8f5ee/1a7a4a?text=📦'" />
           <div class="co-item-info">
-            <div class="co-item-name">${product.name}</div>
+            <div class="co-item-name">${product.name}${variantTag}</div>
             <div class="co-item-price">${hasMRP ? `<del style="color:#aaa;font-size:.7rem">৳${product.mrp}</del> ` : ""}৳${product.price} / ${product.unit}</div>
             <div class="co-item-qty">
-              <button class="co-qty-btn" data-id="${product.id}" data-d="-1">−</button>
+              <button class="co-qty-btn" data-key="${cartKey}" data-d="-1">−</button>
               <span class="co-qty-num">${qty}</span>
-              <button class="co-qty-btn" data-id="${product.id}" data-d="1">+</button>
+              <button class="co-qty-btn" data-key="${cartKey}" data-d="1">+</button>
             </div>
           </div>
-          <button class="co-remove" data-id="${product.id}" title="Remove">🗑</button>`;
+          <button class="co-remove" data-key="${cartKey}" title="Remove">🗑</button>`;
         coItemsEl.appendChild(div);
       });
 
       coItemsEl.querySelectorAll(".co-qty-btn").forEach(b =>
-        b.addEventListener("click", () => changeCoQty(b.dataset.id, parseInt(b.dataset.d))));
+        b.addEventListener("click", () => changeCoQty(b.dataset.key, parseInt(b.dataset.d))));
       coItemsEl.querySelectorAll(".co-remove").forEach(b =>
-        b.addEventListener("click", () => removeCoItem(b.dataset.id)));
+        b.addEventListener("click", () => removeCoItem(b.dataset.key)));
 
       if (hasItems) {
         const freeDelivery = grand >= 1500;
@@ -1771,15 +1931,15 @@
       }
     }
 
-    function changeCoQty(id, delta) {
-      const item = cart.find(c => c.product.id === id);
+    function changeCoQty(key, delta) {
+      const item = cart.find(c => (c.product._cartKey || c.product.id) === key);
       if (!item) return;
       item.qty += delta;
-      if (item.qty <= 0) removeCoItem(id);
+      if (item.qty <= 0) removeCoItem(key);
       else { updateCartCount(); renderCoModal(); }
     }
-    function removeCoItem(id) {
-      cart = cart.filter(c => c.product.id !== id);
+    function removeCoItem(key) {
+      cart = cart.filter(c => (c.product._cartKey || c.product.id) !== key);
       updateCartCount(); renderCoModal();
     }
 
@@ -1802,7 +1962,7 @@
       cart.forEach(({ product, qty }) => {
         const s = product.price * qty; grand += s;
         if (product.mrp && product.mrp > product.price) totalSavings += (product.mrp - product.price) * qty;
-        lines += `• ${product.name} ×${qty} = ৳${s}\n`;
+        lines += `• ${product.name} (${product.unit}) ×${qty} = ৳${s}\n`;
       });
       const freeDelivery = grand >= 1500;
       const grandTotal = grand + (freeDelivery ? 0 : 30);
@@ -1852,4 +2012,4 @@
     }
   </script>
 </body>
-</html>
+  </html>
