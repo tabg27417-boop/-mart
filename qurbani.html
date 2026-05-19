@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>কোরবানি মশলা ক্যালকুলেটর</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Noto+Serif+Bengali:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a0a00;
+    --bg2: #230e00;
+    --card: #2d1200;
+    --card2: #3a1800;
+    --border: #7a3a00;
+    --accent: #e87c00;
+    --accent2: #ff9d2e;
+    --gold: #f5c842;
+    --green: #4caf50;
+    --red: #e53935;
+    --text: #f5e6d0;
+    --text2: #c4a882;
+    --text3: #8a6a45;
+    --glow: 0 0 30px rgba(232,124,0,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Hind Siliguri', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Decorative background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 20%, rgba(232,124,0,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(180,60,0,0.1) 0%, transparent 60%),
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 40px,
+        rgba(122,58,0,0.03) 40px,
+        rgba(122,58,0,0.03) 41px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    padding: 40px 0 30px;
+    position: relative;
+  }
+
+  .eid-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--accent), var(--gold));
+    color: #1a0a00;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 18px;
+    border-radius: 20px;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(232,124,0,0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(232,124,0,0); }
+  }
+
+  header h1 {
+    font-family: 'Noto Serif Bengali', serif;
+    font-size: clamp(28px, 6vw, 48px);
+    font-weight: 800;
+    line-height: 1.2;
+    background: linear-gradient(135deg, var(--gold), var(--accent2), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  header p {
+    color: var(--text2);
+    font-size: 15px;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0;
+    color: var(--border);
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border), transparent);
+  }
+  .divider span { font-size: 20px; }
+
+  /* INPUT SECTION */
+  .input-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 28px;
+    box-shadow: var(--glow);
+  }
+
+  .input-label {
+    font-family: 'Noto Serif Bengali', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .meat-input-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .meat-input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .meat-input-wrap input {
+    width: 100%;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 60px 14px 20px;
+    color: var(--text);
+    font-family: 'Hind Siliguri', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .meat-input-wrap input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(232,124,0,0.2);
+  }
+
+  .meat-unit {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent2);
+    font-weight: 700;
+    font-size: 16px;
+  }
+
+  /* DISH SELECT */
+  .dish-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .dish-btn {
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.25s;
+    color: var(--text2);
+    font-family: 'Hind Siliguri', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .dish-btn .dish-icon { font-size: 26px; margin-bottom: 6px; display: block; }
+  .dish-btn .dish-name { display: block; font-size: 13px; line-height: 1.4; }
+
+  .dish-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(232,124,0,0.2);
+  }
+
+  .dish-btn.active {
+    background: linear-gradient(135deg, rgba(232,124,0,0.25), rgba(180,60,0,0.15));
+    border-color: var(--accent2);
+    color: var(--accent2);
+    box-shadow: 0 0 20px rgba(232,124,0,0.3);
+  }
+
+  /* PEOPLE COUNT */
+  .people-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .people-label { color: var(--text2); font-size: 15px; }
+
+  .counter {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .counter button {
+    background: transparent;
+    border: none;
+    color: var(--accent2);
+    font-size: 22px;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .counter button:hover { background: rgba(232,124,0,0.15); }
+
+  .counter span {
+    min-width: 50px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    padding: 8px 4px;
+  }
+
+  .spice-level-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .spice-label { color: var(--text2); font-size: 15px; min-width: 80px; }
+
+  .spice-btns { display: flex; gap: 8px; }
+
+  .spice-btn {
+    background: var(--bg2);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 7px 16px;
+    cursor: pointer;
+    color: var(--text3);
+    font-family: 'Hind Siliguri', sans-serif;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+
+  .spice-btn:hover { border-color: var(--accent); color: var(--text); }
+  .spice-btn.active { background: rgba(229,57,53,0.2); border-color: var(--red); color: #ff8a80; }
+
+  /* CALCULATE BTN */
+  .calc-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #c86000);
+    border: none;
+    border-radius: 14px;
+    padding: 18px;
+    color: #fff;
+    font-family: 'Noto Serif Bengali', serif;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 24px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .calc-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .calc-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(232,124,0,0.5); }
+  .calc-btn:hover::before { opacity: 1; }
+  .calc-btn:active { transform: translateY(0); }
+
+  /* RESULT SECTION */
+  #result-section {
+    display: none;
+    animation: fadeInUp 0.5s ease;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-header {
+    background: linear-gradient(135deg, var(--card2), var(--card));
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+    box-shadow: var(--glow);
+  }
+
+  .result-header h2 {
+    font-family: 'Noto Serif Bengali', serif;
+    font-size: 22px;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .result-summary {
+    color: var(--text2);
+    font-size: 14px;
+  }
+
+  .result-summary strong { color: var(--accent2); }
+
+  /* SPICE GRID */
+  .spice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .spice-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 14px;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: popIn 0.4s ease backwards;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .spice-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    border-color: var(--accent);
+  }
+
+  .spice-card .s-icon { font-size: 28px; margin-bottom: 8px; display: block; }
+  .spice-card .s-name { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+  .spice-card .s-amount {
+    font-family: 'Noto Serif Bengali', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+  .spice-card .s-unit { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  /* Category headers */
+  .cat-header {
+    font-family: 'Noto Serif Bengali', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gold);
+    margin: 20px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .cat-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--border), transparent);
+  }
+
+  /* TIPS SECTION */
+  .tips-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 10px;
+  }
+
+  .tips-title {
+    font-family: 'Noto Serif Bengali', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 12px;
+  }
+
+  .tip-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(122,58,0,0.3);
+    font-size: 14px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  .tip-item:last-child { border-bottom: none; }
+  .tip-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+
+  /* PRINT BTN */
+  .action-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .print-btn {
+    flex: 1;
+    background: transparent;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 13px;
+    color: var(--text2);
+    font-family: 'Hind Siliguri', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 140px;
+  }
+
+  .print-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .reset-btn {
+    flex: 1;
+    background: transparent;
+    border: 2px solid rgba(229,57,53,0.4);
+    border-radius: 12px;
+    padding: 13px;
+    color: rgba(229,57,53,0.7);
+    font-family: 'Hind Siliguri', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 140px;
+  }
+
+  .reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    color: var(--text3);
+    font-size: 13px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(122,58,0,0.3);
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  @media (max-width: 480px) {
+    .spice-grid { grid-template-columns: repeat(2, 1fr); }
+    .dish-grid { grid-template-columns: repeat(2, 1fr); }
+    .action-row { flex-direction: column; }
+  }
+
+  @media print {
+    body { background: white; color: black; }
+    .input-section, .calc-btn, .action-row, header .eid-badge { display: none; }
+    .spice-card { border: 1px solid #ccc; }
+    .spice-card .s-amount { color: #c86000; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="eid-badge">🌙 কোরবানি ঈদ স্পেশাল</div>
+    <h1>গরুর মাংসের<br>মশলা ক্যালকুলেটর</h1>
+    <p>মাংসের পরিমাণ দিন, সঠিক মশলার হিসাব পান</p>
+  </header>
+
+  <div class="divider"><span>🥩</span></div>
+
+  <!-- INPUT SECTION -->
+  <div class="input-section">
+    <div class="input-label">🥩 গরুর মাংসের পরিমাণ</div>
+    <div class="meat-input-row">
+      <div class="meat-input-wrap">
+        <input type="number" id="meatAmount" placeholder="যেমন: ২ অথবা ৫" min="0.1" step="0.1" value="1">
+        <span class="meat-unit">কেজি</span>
+      </div>
+    </div>
+
+    <!-- DISH SELECT -->
+    <div class="input-label" style="margin-top:24px; margin-bottom:4px;">🍽️ রান্নার ধরন বেছে নিন</div>
+    <div class="dish-grid" id="dishGrid">
+      <button class="dish-btn active" data-dish="kala_bhuna" onclick="selectDish(this)">
+        <span class="dish-icon">🖤</span>
+        <span class="dish-name">কালা ভুনা</span>
+      </button>
+      <button class="dish-btn" data-dish="bhuna" onclick="selectDish(this)">
+        <span class="dish-icon">🔥</span>
+        <span class="dish-name">গরুর ভুনা</span>
+      </button>
+      <button class="dish-btn" data-dish="curry" onclick="selectDish(this)">
+        <span class="dish-icon">🍲</span>
+        <span class="dish-name">গরুর তরকারি</span>
+      </button>
+      <button class="dish-btn" data-dish="rezala" onclick="selectDish(this)">
+        <span class="dish-icon">🍛</span>
+        <span class="dish-name">গরুর রেজালা</span>
+      </button>
+      <button class="dish-btn" data-dish="shahi_korma" onclick="selectDish(this)">
+        <span class="dish-icon">👑</span>
+        <span class="dish-name">শাহী কোর্মা</span>
+      </button>
+      <button class="dish-btn" data-dish="nihari" onclick="selectDish(this)">
+        <span class="dish-icon">🥣</span>
+        <span class="dish-name">নিহারি</span>
+      </button>
+      <button class="dish-btn" data-dish="haleem" onclick="selectDish(this)">
+        <span class="dish-icon">🫕</span>
+        <span class="dish-name">হালিম</span>
+      </button>
+      <button class="dish-btn" data-dish="kebab" onclick="selectDish(this)">
+        <span class="dish-icon">🍢</span>
+        <span class="dish-name">শিক কাবাব</span>
+      </button>
+      <button class="dish-btn" data-dish="shami_kebab" onclick="selectDish(this)">
+        <span class="dish-icon">🥏</span>
+        <span class="dish-name">শামি কাবাব</span>
+      </button>
+      <button class="dish-btn" data-dish="biryani" onclick="selectDish(this)">
+        <span class="dish-icon">🍚</span>
+        <span class="dish-name">গরুর বিরিয়ানি</span>
+      </button>
+      <button class="dish-btn" data-dish="tehari" onclick="selectDish(this)">
+        <span class="dish-icon">🥘</span>
+        <span class="dish-name">তেহারি</span>
+      </button>
+      <button class="dish-btn" data-dish="dum" onclick="selectDish(this)">
+        <span class="dish-icon">♨️</span>
+        <span class="dish-name">দম গোশত</span>
+      </button>
+    </div>
+
+    <!-- PEOPLE COUNT -->
+    <div class="people-row">
+      <span class="people-label">👥 কতজনের জন্য:</span>
+      <div class="counter">
+        <button onclick="changePeople(-1)">−</button>
+        <span id="peopleCount">৪</span>
+        <button onclick="changePeople(1)">+</button>
+      </div>
+      <span style="color:var(--text3); font-size:13px;">জন</span>
+    </div>
+
+    <!-- SPICE LEVEL -->
+    <div class="spice-level-row">
+      <span class="spice-label">🌶️ ঝাল:</span>
+      <div class="spice-btns">
+        <button class="spice-btn" data-level="0.6" onclick="selectSpice(this)">হালকা</button>
+        <button class="spice-btn active" data-level="1" onclick="selectSpice(this)">মাঝারি</button>
+        <button class="spice-btn" data-level="1.5" onclick="selectSpice(this)">ঝাল</button>
+        <button class="spice-btn" data-level="2" onclick="selectSpice(this)">অতি ঝাল</button>
+      </div>
+    </div>
+
+    <button class="calc-btn" onclick="calculate()">✨ মশলা হিসাব করুন</button>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-section">
+    <div class="result-header">
+      <h2 id="result-title">কালা ভুনার মশলার তালিকা</h2>
+      <div class="result-summary" id="result-summary"></div>
+    </div>
+
+    <div id="result-body"></div>
+
+    <div id="tips-section"></div>
+
+    <div class="action-row">
+      <button class="print-btn" onclick="window.print()">🖨️ প্রিন্ট করুন</button>
+      <button class="reset-btn" onclick="resetAll()">🔄 আবার হিসাব করুন</button>
+    </div>
+  </div>
+
+  <footer>
+    <p>🌙 কোরবানি ঈদ মোবারক 🌙</p>
+    <p style="margin-top:6px;">সকল পরিমাপ প্রতি কেজি মাংসের ভিত্তিতে হিসাব করা হয়েছে</p>
+  </footer>
+</div>
+
+<script>
+  let selectedDish = 'kala_bhuna';
+  let spiceLevel = 1;
+  let peopleNum = 4;
+
+  // Dish recipes: spices per 1 kg
+  const dishes = {
+    kala_bhuna: {
+      name: 'কালা ভুনা',
+      icon: '🖤',
+      base: {
+        haldi: 1.5,       // হলুদ tsp
+        mirchi: 2.5,      // মরিচ tsp
+        dhania: 2,        // ধনিয়া tsp
+        jira: 1.5,        // জিরা tsp
+        adda: 40,         // আদা g
+        roshun: 50,       // রসুন g
+        peyaj: 150,       // পেঁয়াজ g
+        tel: 80,          // তেল ml
+        lal_mirchi: 3,    // লাল মরিচ (টা)
+        elachi: 3,
+        darchini: 2,
+        lavang: 4,
+        tej_pata: 2,
+        kali_mirchi: 0.5,
+        garam_masala: 1,
+        lemon: 0.5,
+        noon: 1.5,        // লবণ tsp
+      },
+      extra: {
+        kalo_jira: 1,     // কালো জিরা tsp — special for kala bhuna
+        char_moshla: 1,   // চার মশলা
+        fried_peyaj: 80,  // বেরেস্তা g
+      },
+      tips: [
+        { icon: '🔥', text: 'কালা ভুনা রান্নায় মাংস প্রথমে শুকনো ভুনা করতে হবে যতক্ষণ না তেল আলাদা হয়।' },
+        { icon: '⏱️', text: 'মাংস সেদ্ধ করার সময় পানি একদম কম ব্যবহার করুন — আস্তে আস্তে কষিয়ে নিন।' },
+        { icon: '🖤', text: 'ঘন কালো রং পেতে পেঁয়াজ বেরেস্তা ভালো করে লাল করতে হবে।' },
+        { icon: '🧄', text: 'রসুন-আদা বাটা একটু বেশি ব্যবহার করুন — এটা কালা ভুনার মূল স্বাদ।' },
+      ]
+    },
+    bhuna: {
+      name: 'গরুর ভুনা',
+      icon: '🔥',
+      base: {
+        haldi: 1.5, mirchi: 2, dhania: 1.5, jira: 1,
+        adda: 35, roshun: 40, peyaj: 130, tel: 70,
+        lal_mirchi: 3, elachi: 3, darchini: 2, lavang: 4,
+        tej_pata: 2, garam_masala: 1, noon: 1.5,
+      },
+      extra: {
+        tomato: 100, // টমেটো g
+        dahi: 50,    // দই g
+      },
+      tips: [
+        { icon: '🔥', text: 'ভুনা করার সময় মাঝারি আঁচে ধীরে ধীরে কষান — তাড়াহুড়া করলে মশলা কাঁচা থাকে।' },
+        { icon: '🍅', text: 'টমেটো দিলে স্বাদ বাড়ে এবং গ্রেভি সুন্দর হয়।' },
+        { icon: '🥛', text: 'দই দিয়ে মাংস মেরিনেট করলে নরম হয়।' },
+      ]
+    },
+    curry: {
+      name: 'গরুর তরকারি',
+      icon: '🍲',
+      base: {
+        haldi: 1, mirchi: 1.5, dhania: 2, jira: 1,
+        adda: 30, roshun: 35, peyaj: 120, tel: 60,
+        lal_mirchi: 2, elachi: 2, darchini: 1, lavang: 3,
+        tej_pata: 2, garam_masala: 0.5, noon: 1.5,
+        tomato: 100, alu: 200,
+      },
+      extra: {
+        methi: 0.5, // মেথি
+      },
+      tips: [
+        { icon: '🥔', text: 'আলু দিলে তরকারি ঘন হয় এবং স্বাদ বাড়ে।' },
+        { icon: '💧', text: 'তরকারি রান্নায় পানির পরিমাণ নিজের পছন্দমতো রাখুন।' },
+      ]
+    },
+    rezala: {
+      name: 'গরুর রেজালা',
+      icon: '🍛',
+      base: {
+        haldi: 0.5, mirchi: 0.5, kali_mirchi: 1,
+        adda: 40, roshun: 30, peyaj: 140, tel: 50,
+        elachi: 5, darchini: 3, lavang: 6, tej_pata: 2,
+        noon: 1.5, garam_masala: 1.5,
+      },
+      extra: {
+        dahi: 150,    // দই
+        malai: 50,    // মালাই
+        ghee: 30,     // ঘি
+        kesar: 0.2,   // কেশর (গ্রাম)
+        dry_fruit: 30,// বাদাম/কিশমিশ
+      },
+      tips: [
+        { icon: '🥛', text: 'রেজালায় ঝাল খুব কম ব্যবহার হয় — এটা সাদা রঙের মিষ্টি-কড়া তরকারি।' },
+        { icon: '✨', text: 'ঘি এবং দই রেজালার মূল উপাদান — কখনো বাদ দেবেন না।' },
+        { icon: '🌿', text: 'কেশর গরম পানিতে ভিজিয়ে দিলে সুন্দর রং ও সুগন্ধ আসে।' },
+      ]
+    },
+    shahi_korma: {
+      name: 'শাহী কোর্মা',
+      icon: '👑',
+      base: {
+        haldi: 0.5, mirchi: 1, dhania: 1, jira: 0.5,
+        adda: 35, roshun: 30, peyaj: 130, tel: 60,
+        elachi: 5, darchini: 3, lavang: 5, tej_pata: 2,
+        garam_masala: 1.5, noon: 1.5, kali_mirchi: 0.5,
+      },
+      extra: {
+        dahi: 150, ghee: 40, cream: 50,
+        badam: 30, kishmish: 20,
+        peyaj_bereshta: 80,
+      },
+      tips: [
+        { icon: '👑', text: 'শাহী কোর্মা মোগলাই রান্না — ঘি ও ক্রিম ছাড়া আসল স্বাদ আসে না।' },
+        { icon: '🥜', text: 'বাদাম বাটা দিলে গ্রেভি ঘন ও সুস্বাদু হয়।' },
+        { icon: '🌸', text: 'কেওড়ার জল বা গোলাপ জল একটু দিলে সুগন্ধ অসাধারণ হয়।' },
+      ]
+    },
+    nihari: {
+      name: 'নিহারি',
+      icon: '🥣',
+      base: {
+        haldi: 1, mirchi: 2, dhania: 2, jira: 1.5,
+        adda: 50, roshun: 50, peyaj: 150, tel: 100,
+        lal_mirchi: 4, elachi: 4, darchini: 3, lavang: 5,
+        tej_pata: 3, kali_mirchi: 1, garam_masala: 2, noon: 2,
+      },
+      extra: {
+        nihari_masala: 2, // নিহারি মশলা tsp
+        wheat_flour: 30,  // গমের আটা g (ঘন করতে)
+        ghee: 50,
+        adrak_julienne: 20,
+        lemon: 1,
+        fried_peyaj: 60,
+      },
+      tips: [
+        { icon: '⏳', text: 'নিহারি সারারাত বা কমপক্ষে ৬-৮ ঘণ্টা ধীরে রান্না করতে হয়।' },
+        { icon: '🦴', text: 'হাড়সহ মাংস (নলি বা পায়া) ব্যবহার করলে স্বাদ আরও ভালো হয়।' },
+        { icon: '🍋', text: 'পরিবেশনের সময় আদা কুচি, লেবু ও ধনিয়া পাতা দিন।' },
+      ]
+    },
+    haleem: {
+      name: 'হালিম',
+      icon: '🫕',
+      base: {
+        haldi: 1.5, mirchi: 2, dhania: 2, jira: 1.5,
+        adda: 45, roshun: 45, peyaj: 200, tel: 100,
+        lal_mirchi: 3, elachi: 4, darchini: 3, lavang: 5,
+        tej_pata: 2, garam_masala: 2, noon: 2.5,
+      },
+      extra: {
+        masur_dal: 50,   // মসুর ডাল g
+        moong_dal: 50,   // মুগ ডাল g
+        chola_dal: 50,   // ছোলার ডাল g
+        wheat: 100,      // গম g
+        fried_peyaj: 100,
+        ghee: 40,
+        lemon: 2,
+      },
+      tips: [
+        { icon: '🕐', text: 'হালিম রান্নায় ৩-৪ ঘণ্টা সময় লাগে — মাংস একদম গলে যাওয়া চাই।' },
+        { icon: '🌾', text: 'ডাল ও গম রাতে ভিজিয়ে রাখুন।' },
+        { icon: '🥄', text: 'নাড়তে নাড়তে রান্না করুন — নিচে লেগে যেতে পারে।' },
+      ]
+    },
+    kebab: {
+      name: 'শিক কাবাব',
+      icon: '🍢',
+      base: {
+        haldi: 0.5, mirchi: 1.5, dhania: 1, jira: 1,
+        adda: 30, roshun: 35, peyaj: 100, tel: 40,
+        lal_mirchi: 2, kali_mirchi: 1, garam_masala: 1.5, noon: 1.5,
+      },
+      extra: {
+        egg: 1,           // ডিম
+        besan: 30,        // বেসন g
+        peyaj_bata: 50,   // পেঁয়াজ বাটা
+        koriander: 20,    // ধনিয়া পাতা g
+        pudina: 10,       // পুদিনা g
+      },
+      tips: [
+        { icon: '🥩', text: 'কাবাবের জন্য মাংস একটু মোটা করে কিমা করুন — অনেক সরু হলে শক্ত হয়।' },
+        { icon: '🔥', text: 'কয়লার আঁচে ভাজলে ধোঁয়া দেওয়া স্বাদ পাওয়া যায়।' },
+        { icon: '🧅', text: 'পেঁয়াজের পানি ভালো করে চেপে বের করুন — নাহলে কাবাব ভাঙবে।' },
+      ]
+    },
+    shami_kebab: {
+      name: 'শামি কাবাব',
+      icon: '🥏',
+      base: {
+        haldi: 1, mirchi: 1.5, dhania: 1, jira: 1,
+        adda: 30, roshun: 30, peyaj: 80, tel: 60,
+        lal_mirchi: 2, kali_mirchi: 0.5, garam_masala: 1, noon: 1.5,
+        elachi: 2, darchini: 1, lavang: 3,
+      },
+      extra: {
+        chola_dal: 80,  // ছোলার ডাল g
+        egg: 1,
+        koriander: 20,
+        pudina: 10,
+        lemon: 0.5,
+      },
+      tips: [
+        { icon: '🫘', text: 'ছোলার ডাল মাংসের সাথে একসাথে সেদ্ধ করুন।' },
+        { icon: '💧', text: 'মিশ্রণ থেকে অতিরিক্ত পানি বের করে নিন — নাহলে কাবাব ভাঙবে।' },
+        { icon: '🧊', text: 'বানিয়ে ফ্রিজে রাখলে কদিন পর্যন্ত ভালো থাকে।' },
+      ]
+    },
+    biryani: {
+      name: 'গরুর বিরিয়ানি',
+      icon: '🍚',
+      base: {
+        haldi: 1, mirchi: 1.5, dhania: 1, jira: 1,
+        adda: 40, roshun: 40, peyaj: 160, tel: 80,
+        lal_mirchi: 2, elachi: 6, darchini: 4, lavang: 6,
+        tej_pata: 3, kali_mirchi: 1, garam_masala: 2, noon: 2,
+      },
+      extra: {
+        dahi: 100, ghee: 50,
+        saffron: 0.3, kesar_water: 30,
+        fried_peyaj: 100,
+        biryani_masala: 2,
+        rice: 400, // চাল g (per kg meat)
+      },
+      tips: [
+        { icon: '🍚', text: 'বাসমতি চাল ৩০ মিনিট ভিজিয়ে রাখুন।' },
+        { icon: '♨️', text: 'দম পদ্ধতিতে রান্না করলে বিরিয়ানি সুগন্ধি ও সুস্বাদু হয়।' },
+        { icon: '🥚', text: 'পরিবেশনের সময় সেদ্ধ ডিম, ভাজা পেঁয়াজ ও ধনিয়া পাতা দিন।' },
+      ]
+    },
+    tehari: {
+      name: 'তেহারি',
+      icon: '🥘',
+      base: {
+        haldi: 1.5, mirchi: 2, dhania: 1.5, jira: 1,
+        adda: 35, roshun: 35, peyaj: 150, tel: 80,
+        lal_mirchi: 3, elachi: 4, darchini: 3, lavang: 5,
+        tej_pata: 2, kali_mirchi: 0.5, garam_masala: 1.5, noon: 2,
+      },
+      extra: {
+        alu: 150,
+        rice: 400,
+        ghee: 30,
+        fried_peyaj: 80,
+      },
+      tips: [
+        { icon: '🔥', text: 'তেহারিতে ঝাল মশলা বেশি দেওয়া হয় — রঙ সুন্দর হলুদ-লাল হবে।' },
+        { icon: '🥔', text: 'আলু ছোট টুকরো করে কাটুন যাতে চালের সাথে সমান সেদ্ধ হয়।' },
+      ]
+    },
+    dum: {
+      name: 'দম গোশত',
+      icon: '♨️',
+      base: {
+        haldi: 1, mirchi: 1.5, dhania: 1.5, jira: 1,
+        adda: 45, roshun: 45, peyaj: 150, tel: 70,
+        lal_mirchi: 2, elachi: 5, darchini: 3, lavang: 6,
+        tej_pata: 2, kali_mirchi: 1, garam_masala: 2, noon: 1.5,
+      },
+      extra: {
+        dahi: 100, ghee: 50,
+        kewra: 5,   // কেওড়ার জল ml
+        fried_peyaj: 80,
+      },
+      tips: [
+        { icon: '♨️', text: 'দম পদ্ধতিতে ঢাকনার কিনারা আটার গোলা দিয়ে বন্ধ করুন।' },
+        { icon: '🔥', text: 'প্রথমে জোরালো আঁচে ৫ মিনিট, তারপর একদম কম আঁচে ৪৫-৬০ মিনিট রান্না করুন।' },
+        { icon: '🌸', text: 'কেওড়ার জল দিলে সুগন্ধ অতুলনীয় হয়।' },
+      ]
+    },
+  };
+
+  // Spice meta info
+  const spiceMeta = {
+    haldi:       { name: 'হলুদ গুঁড়া', icon: '🟡', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    mirchi:      { name: 'মরিচ গুঁড়া', icon: '🌶️', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    dhania:      { name: 'ধনিয়া গুঁড়া', icon: '🌿', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    jira:        { name: 'জিরা গুঁড়া', icon: '⚫', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    kali_mirchi: { name: 'কালো মরিচ', icon: '🫙', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    garam_masala:{ name: 'গরম মশলা', icon: '🌰', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    nihari_masala:{ name: 'নিহারি মশলা', icon: '🫙', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    biryani_masala:{ name: 'বিরিয়ানি মশলা', icon: '🌶️', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    char_moshla: { name: 'চার মশলা', icon: '🌿', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    kalo_jira:   { name: 'কালো জিরা', icon: '🖤', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    methi:       { name: 'মেথি', icon: '🌿', unit: 'চা চামচ', cat: 'গুঁড়া মশলা' },
+    adda:        { name: 'আদা বাটা', icon: '🫚', unit: 'গ্রাম', cat: 'আদা-রসুন' },
+    roshun:      { name: 'রসুন বাটা', icon: '🧄', unit: 'গ্রাম', cat: 'আদা-রসুন' },
+    adak_julienne:{ name: 'কাঁচা আদা কুচি', icon: '🫚', unit: 'গ্রাম', cat: 'আদা-রসুন' },
+    adrak_julienne:{ name: 'কাঁচা আদা কুচি', icon: '🫚', unit: 'গ্রাম', cat: 'আদা-রসুন' },
+    peyaj:       { name: 'পেঁয়াজ', icon: '🧅', unit: 'গ্রাম', cat: 'তাজা উপাদান' },
+    lal_mirchi:  { name: 'শুকনো লাল মরিচ', icon: '🌶️', unit: 'টি', cat: 'তাজা উপাদান' },
+    tomato:      { name: 'টমেটো', icon: '🍅', unit: 'গ্রাম', cat: 'তাজা উপাদান' },
+    alu:         { name: 'আলু', icon: '🥔', unit: 'গ্রাম', cat: 'তাজা উপাদান' },
+    koriander:   { name: 'ধনিয়া পাতা', icon: '🌿', unit: 'গ্রাম', cat: 'তাজা উপাদান' },
+    pudina:      { name: 'পুদিনা পাতা', icon: '🍃', unit: 'গ্রাম', cat: 'তাজা উপাদান' },
+    lemon:       { name: 'লেবু', icon: '🍋', unit: 'টি', cat: 'তাজা উপাদান' },
+    tel:         { name: 'সয়াবিন তেল', icon: '🫙', unit: 'মিলি', cat: 'তেল ও চর্বি' },
+    ghee:        { name: 'ঘি', icon: '✨', unit: 'মিলি', cat: 'তেল ও চর্বি' },
+    malai:       { name: 'মালাই', icon: '🥛', unit: 'মিলি', cat: 'তেল ও চর্বি' },
+    cream:       { name: 'ক্রিম', icon: '🥛', unit: 'মিলি', cat: 'তেল ও চর্বি' },
+    dahi:        { name: 'টক দই', icon: '🥛', unit: 'গ্রাম', cat: 'দুগ্ধজাত' },
+    elachi:      { name: 'এলাচ', icon: '💚', unit: 'টি', cat: 'গোটা মশলা' },
+    darchini:    { name: 'দারচিনি', icon: '🟤', unit: 'ইঞ্চি', cat: 'গোটা মশলা' },
+    lavang:      { name: 'লবঙ্গ', icon: '🌸', unit: 'টি', cat: 'গোটা মশলা' },
+    tej_pata:    { name: 'তেজপাতা', icon: '🍂', unit: 'টি', cat: 'গোটা মশলা' },
+    noon:        { name: 'লবণ', icon: '🧂', unit: 'চা চামচ', cat: 'লবণ' },
+    kesar:       { name: 'কেশর', icon: '🌼', unit: 'গ্রাম', cat: 'বিশেষ মশলা' },
+    saffron:     { name: 'কেশর/জাফরান', icon: '🌼', unit: 'গ্রাম', cat: 'বিশেষ মশলা' },
+    kesar_water: { name: 'কেশর জল', icon: '💧', unit: 'মিলি', cat: 'বিশেষ মশলা' },
+    kewra:       { name: 'কেওড়ার জল', icon: '🌺', unit: 'মিলি', cat: 'বিশেষ মশলা' },
+    dry_fruit:   { name: 'বাদাম ও কিশমিশ', icon: '🥜', unit: 'গ্রাম', cat: 'বিশেষ উপাদান' },
+    badam:       { name: 'বাদাম', icon: '🥜', unit: 'গ্রাম', cat: 'বিশেষ উপাদান' },
+    kishmish:    { name: 'কিশমিশ', icon: '🍇', unit: 'গ্রাম', cat: 'বিশেষ উপাদান' },
+    fried_peyaj: { name: 'বেরেস্তা (ভাজা পেঁয়াজ)', icon: '🧅', unit: 'গ্রাম', cat: 'বিশেষ উপাদান' },
+    peyaj_bereshta: { name: 'বেরেস্তা (ভাজা পেঁয়াজ)', icon: '🧅', unit: 'গ্রাম', cat: 'বিশেষ উপাদান' },
+    peyaj_bata:  { name: 'পেঁয়াজ বাটা', icon: '🧅', unit: 'গ্রাম', cat: 'বিশেষ উপাদান' },
+    wheat_flour: { name: 'গমের আটা (ঘন করতে)', icon: '🌾', unit: 'গ্রাম', cat: 'বিশেষ উপাদান' },
+    besan:       { name: 'বেসন', icon: '🌾', unit: 'গ্রাম', cat: 'বিশেষ উপাদান' },
+    egg:         { name: 'ডিম', icon: '🥚', unit: 'টি', cat: 'বিশেষ উপাদান' },
+    masur_dal:   { name: 'মসুর ডাল', icon: '🫘', unit: 'গ্রাম', cat: 'ডাল-শস্য' },
+    moong_dal:   { name: 'মুগ ডাল', icon: '🫘', unit: 'গ্রাম', cat: 'ডাল-শস্য' },
+    chola_dal:   { name: 'ছোলার ডাল', icon: '🫘', unit: 'গ্রাম', cat: 'ডাল-শস্য' },
+    wheat:       { name: 'গম', icon: '🌾', unit: 'গ্রাম', cat: 'ডাল-শস্য' },
+    rice:        { name: 'বাসমতি চাল', icon: '🍚', unit: 'গ্রাম', cat: 'ডাল-শস্য' },
+  };
+
+  // Category order
+  const catOrder = ['গুঁড়া মশলা', 'গোটা মশলা', 'আদা-রসুন', 'তাজা উপাদান', 'তেল ও চর্বি', 'দুগ্ধজাত', 'বিশেষ মশলা', 'বিশেষ উপাদান', 'ডাল-শস্য', 'লবণ'];
+
+  function selectDish(btn) {
+    document.querySelectorAll('.dish-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedDish = btn.dataset.dish;
+  }
+
+  function selectSpice(btn) {
+    document.querySelectorAll('.spice-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    spiceLevel = parseFloat(btn.dataset.level);
+  }
+
+  const toBanglaNum = n => String(n).replace(/[0-9]/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+
+  function changePeople(delta) {
+    peopleNum = Math.max(1, Math.min(50, peopleNum + delta));
+    document.getElementById('peopleCount').textContent = toBanglaNum(peopleNum);
+  }
+
+  function formatAmount(val, unit) {
+    if (unit === 'চা চামচ' || unit === 'টেবিল চামচ') {
+      if (val < 0.25) return toBanglaNum('সামান্য');
+      if (val <= 0.5) return toBanglaNum('½');
+      const whole = Math.floor(val);
+      const frac = val - whole;
+      let s = whole > 0 ? toBanglaNum(whole) : '';
+      if (frac >= 0.4 && frac < 0.6) s += (s ? ' ½' : '½');
+      else if (frac >= 0.7) s += (s ? ' ¾' : '¾');
+      else if (frac >= 0.2) s += (s ? ' ¼' : '¼');
+      return s || toBanglaNum(val.toFixed(1));
+    }
+    if (val < 1 && unit === 'টি') return toBanglaNum(Math.round(val));
+    if (val >= 100) return toBanglaNum(Math.round(val));
+    if (val >= 10) return toBanglaNum(Math.round(val));
+    return toBanglaNum(parseFloat(val.toFixed(1)));
+  }
+
+  function calculate() {
+    const meatKg = parseFloat(document.getElementById('meatAmount').value);
+    if (!meatKg || meatKg <= 0) {
+      document.getElementById('meatAmount').style.borderColor = 'var(--red)';
+      setTimeout(() => document.getElementById('meatAmount').style.borderColor = 'var(--border)', 1500);
+      return;
+    }
+
+    const dish = dishes[selectedDish];
+    const allSpices = { ...dish.base, ...(dish.extra || {}) };
+
+    // Spice multiplier: chili-related get spiceLevel, others stay
+    const spicyKeys = ['mirchi', 'lal_mirchi', 'kali_mirchi'];
+
+    const calculated = {};
+    for (const [key, baseVal] of Object.entries(allSpices)) {
+      const multiplier = spicyKeys.includes(key) ? spiceLevel : 1;
+      calculated[key] = baseVal * meatKg * multiplier;
+    }
+
+    // Build result HTML
+    const catMap = {};
+    for (const [key, val] of Object.entries(calculated)) {
+      const meta = spiceMeta[key];
+      if (!meta) continue;
+      if (!catMap[meta.cat]) catMap[meta.cat] = [];
+      catMap[meta.cat].push({ key, val, meta });
+    }
+
+    let html = '';
+    for (const cat of catOrder) {
+      if (!catMap[cat]) continue;
+      html += `<div class="cat-header">🔸 ${cat}</div><div class="spice-grid">`;
+      catMap[cat].forEach(({ key, val, meta }, i) => {
+        html += `
+          <div class="spice-card" style="animation-delay:${i * 0.05}s">
+            <span class="s-icon">${meta.icon}</span>
+            <div class="s-name">${meta.name}</div>
+            <div class="s-amount">${formatAmount(val, meta.unit)}</div>
+            <div class="s-unit">${meta.unit}</div>
+          </div>`;
+      });
+      html += '</div>';
+    }
+
+    document.getElementById('result-body').innerHTML = html;
+
+    // Tips
+    let tipsHtml = `<div class="tips-card"><div class="tips-title">💡 রান্নার টিপস — ${dish.name}</div>`;
+    dish.tips.forEach(t => {
+      tipsHtml += `<div class="tip-item"><span class="tip-icon">${t.icon}</span><span>${t.text}</span></div>`;
+    });
+    tipsHtml += '</div>';
+    document.getElementById('tips-section').innerHTML = tipsHtml;
+
+    // Summary
+    document.getElementById('result-title').textContent = `${dish.icon} ${dish.name} — মশলার তালিকা`;
+    document.getElementById('result-summary').innerHTML =
+      `মাংস: <strong>${toBanglaNum(meatKg)} কেজি</strong> &nbsp;|&nbsp; ` +
+      `জনসংখ্যা: <strong>${toBanglaNum(peopleNum)} জন</strong> &nbsp;|&nbsp; ` +
+      `প্রতিজনে: <strong>~${toBanglaNum((meatKg * 1000 / peopleNum).toFixed(0))} গ্রাম</strong>`;
+
+    const rs = document.getElementById('result-section');
+    rs.style.display = 'block';
+    setTimeout(() => rs.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  }
+
+  function resetAll() {
+    document.getElementById('result-section').style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
