@@ -819,36 +819,10 @@
     <div class="sidebar-divider"></div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">Shop by Category</div>
-      <button class="sidebar-item cat-item" data-sidebar-cat="all">
+      <button class="sidebar-item cat-item" data-sidebar-cat="all" onclick="switchCategory_sb(this)">
         <span class="si-icon">🏪</span> All Products
       </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="rice-grain">
-        <span class="si-icon">🌾</span> Rice &amp; Grain
-      </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="vegetables">
-        <span class="si-icon">🥦</span> Vegetables
-      </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="fish">
-        <span class="si-icon">🐟</span> Fish
-      </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="meat">
-        <span class="si-icon">🥩</span> Meat
-      </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="oil-spice">
-        <span class="si-icon">🫙</span> Oil &amp; Spice
-      </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="dairy">
-        <span class="si-icon">🥛</span> Dairy
-      </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="snacks">
-        <span class="si-icon">🍿</span> Snacks
-      </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="cold-drinks">
-        <span class="si-icon">🥤</span> Cold Drinks
-      </button>
-      <button class="sidebar-item cat-item" data-sidebar-cat="tea-and-coffee">
-        <span class="si-icon">☕</span> Tea &amp; Coffee
-      </button>
+      <div id="sidebarCatList"></div>
     </div>
   </aside>
 
@@ -911,15 +885,6 @@
     <div class="shop-by-cat-inner" id="categories">
       <h3>Shop by</h3>
       <button class="cat-chip active" data-cat="all"><span class="chip-icon">🏪</span> All</button>
-      <button class="cat-chip" data-cat="rice-grain"><span class="chip-icon">🌾</span> Rice & Grain</button>
-      <button class="cat-chip" data-cat="vegetables"><span class="chip-icon">🥦</span> Vegetables</button>
-      <button class="cat-chip" data-cat="fish"><span class="chip-icon">🐟</span> Fish</button>
-      <button class="cat-chip" data-cat="meat"><span class="chip-icon">🥩</span> Meat</button>
-      <button class="cat-chip" data-cat="oil-spice"><span class="chip-icon">🫙</span> Oil & Spice</button>
-      <button class="cat-chip" data-cat="dairy"><span class="chip-icon">🥛</span> Dairy</button>
-      <button class="cat-chip" data-cat="snacks"><span class="chip-icon">🍿</span> Snacks</button>
-      <button class="cat-chip" data-cat="cold-drinks"><span class="chip-icon">🥤</span> Cold Drinks</button>
-      <button class="cat-chip" data-cat="tea-and-coffee"><span class="chip-icon">☕</span> Tea & Coffee</button>
     </div>
   </nav>
 
@@ -1002,7 +967,7 @@
   <!-- Firebase + App Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, query, orderBy }
+    import { getFirestore, collection, onSnapshot, getDocs, query, orderBy }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { FIREBASE_CONFIG, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from "./config.js";
 
@@ -1031,13 +996,28 @@
 
     // ── STATE ──
     let allProducts    = [];
+    let allCategories  = []; // loaded from Firestore
     let cart           = [];
     let activeCategory = "all";
     let searchQuery    = "";
     let currentPage    = 1;
     const PAGE_SIZE    = 9;
 
-    // Load cart from localStorage (returning from order page)
+    // Built-in categories (always shown first)
+    const BUILTIN_CATEGORIES = [
+      { key: "rice-grain",      label: "Rice & Grain",     icon: "🌾" },
+      { key: "vegetables",      label: "Vegetables",       icon: "🥦" },
+      { key: "fish",            label: "Fish",             icon: "🐟" },
+      { key: "meat",            label: "Meat",             icon: "🥩" },
+      { key: "oil-spice",       label: "Oil & Spice",      icon: "🫙" },
+      { key: "dairy",           label: "Dairy",            icon: "🥛" },
+      { key: "snacks",          label: "Snacks",           icon: "🍿" },
+      { key: "cold-drinks",     label: "Cold Drinks",      icon: "🥤" },
+      { key: "tea-and-coffee",  label: "Tea & Coffee",     icon: "☕" },
+      { key: "HomeCare",        label: "Home Care",        icon: "🧴" },
+    ];
+
+    // Load cart from localStorage
     try {
       const saved = localStorage.getItem("mart_cart");
       if (saved) cart = JSON.parse(saved);
@@ -1062,83 +1042,106 @@
     if (window.innerWidth <= 640) mobileWrap.style.display = "flex";
     mobileInput.addEventListener("input", e => { searchQuery = e.target.value; searchInput.value = e.target.value; renderProducts(); });
 
-    // Inject custom categories early so CATEGORY_ORDER is ready before Firebase snapshot fires
-    injectCustomCategories();
-
-    // ── FIREBASE ──
-    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
-    onSnapshot(q, snap => {
-      allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      loadingState.classList.add("hidden");
-      renderProducts();
-      renderCategorySections();
-    }, err => {
-      loadingState.innerHTML = `<p style="color:#e53e3e">⚠️ Failed to load products. Check Firebase config.</p>`;
-      console.error(err);
-    });
-
-    // ── CATEGORY SECTIONS ──
-    const CATEGORY_ORDER = [
-      { key: "rice-grain",  label: "🌾 Rice & Grain" },
-      { key: "vegetables",  label: "🥦 Vegetables" },
-      { key: "fish",        label: "🐟 Fish" },
-      { key: "meat",        label: "🥩 Meat" },
-      { key: "oil-spice",   label: "🫙 Oil & Spice" },
-      { key: "dairy",       label: "🥛 Dairy" },
-      { key: "snacks",       label: "🍿 Snacks" },
-      { key: "cold-drinks",  label: "🥤 Cold Drinks" },
-      { key: "tea-and-coffee", label: "☕ Tea & Coffee" },
-    ];
-
-    // ── INJECT CUSTOM CATEGORIES FROM ADMIN ──────────────────────
-    function getCustomCategories() {
-      try { return JSON.parse(localStorage.getItem("mart_custom_categories") || "[]"); } catch(e) { return []; }
-    }
-
-    function injectCustomCategories() {
-      const customCats = getCustomCategories();
-      if (!customCats.length) return;
-
-      // 1. Append to CATEGORY_ORDER (only if not already present)
-      customCats.forEach(cat => {
-        if (!CATEGORY_ORDER.find(c => c.key === cat.key)) {
-          CATEGORY_ORDER.push({ key: cat.key, label: `${cat.icon || "🏷"} ${cat.label}` });
+    // ── CATEGORY HELPERS ──
+    function getCategoryOrder() {
+      // Start with builtins, then append any Firestore custom cats not already in list
+      const order = [...BUILTIN_CATEGORIES];
+      allCategories.forEach(cat => {
+        if (!order.find(c => c.key === cat.key)) {
+          order.push({ key: cat.key, label: cat.label, icon: cat.icon || "🏷" });
         }
       });
+      return order;
+    }
 
-      // 2. Inject chips into the category chips bar
+    function formatCategory(catKey) {
+      const all = getCategoryOrder();
+      const found = all.find(c => c.key === catKey);
+      return found ? `${found.icon} ${found.label}` : catKey;
+    }
+
+    function buildCategoryUI() {
+      const order = getCategoryOrder();
       const chipsContainer = document.getElementById("categories");
-      customCats.forEach(cat => {
-        if (chipsContainer.querySelector(`[data-cat="${cat.key}"]`)) return;
-        const btn = document.createElement("button");
-        btn.className = "cat-chip";
-        btn.dataset.cat = cat.key;
-        btn.innerHTML = `<span class="chip-icon">${cat.icon || "🏷"}</span> ${cat.label}`;
-        btn.addEventListener("click", () => switchCategory(cat.key));
-        chipsContainer.appendChild(btn);
-      });
+      const sidebarCatSection = document.getElementById("sidebarCatList");
 
-      // 3. Inject into sidebar
-      const sidebarCatSection = document.querySelector("[data-sidebar-cat='tea-and-coffee']")?.parentElement;
-      if (sidebarCatSection) {
-        customCats.forEach(cat => {
-          if (sidebarCatSection.querySelector(`[data-sidebar-cat="${cat.key}"]`)) return;
+      // Clear dynamic slots (keep only the "All" chip)
+      chipsContainer.querySelectorAll(".cat-chip:not([data-cat=\"all\"])").forEach(el => el.remove());
+      if (sidebarCatSection) sidebarCatSection.innerHTML = "";
+
+      order.forEach(cat => {
+        // Chip (show all categories, not just ones with products)
+        const chip = document.createElement("button");
+        chip.className = "cat-chip";
+        chip.dataset.cat = cat.key;
+        chip.innerHTML = `<span class="chip-icon">${cat.icon}</span> ${cat.label}`;
+        chip.addEventListener("click", () => switchCategory(cat.key));
+        chipsContainer.appendChild(chip);
+
+        // Sidebar
+        if (sidebarCatSection) {
           const btn = document.createElement("button");
           btn.className = "sidebar-item cat-item";
           btn.dataset.sidebarCat = cat.key;
-          btn.innerHTML = `<span class="si-icon">${cat.icon || "🏷"}</span> ${cat.label}`;
+          btn.innerHTML = `<span class="si-icon">${cat.icon}</span> ${cat.label}`;
           btn.addEventListener("click", () => { closeSidebar(); switchCategory(cat.key); });
           sidebarCatSection.appendChild(btn);
-        });
-      }
+        }
+      });
+
+      // Re-sync active chip highlight
+      document.querySelectorAll(".cat-chip").forEach(b =>
+        b.classList.toggle("active", b.dataset.cat === activeCategory));
     }
 
+    // ── FIRESTORE LISTENERS ──
+    // Load categories first, then start products listener
+    async function initData() {
+      // 1. Load categories (one-time fetch — works even with basic Firestore rules)
+      try {
+        const catSnap = await getDocs(collection(db, "categories"));
+        catSnap.forEach(d => {
+          const cat = d.data();
+          if (!allCategories.find(c => c.key === cat.key)) {
+            allCategories.push({ key: cat.key, label: cat.label, icon: cat.icon || "🏷" });
+          }
+        });
+      } catch(e) {
+        console.warn("Could not load categories from Firestore:", e.message);
+      }
+
+      // 2. Products — real-time listener
+      const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+      onSnapshot(q, snap => {
+        allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        loadingState.classList.add("hidden");
+        // Auto-detect any category key in products not yet known
+        const knownKeys = new Set(getCategoryOrder().map(c => c.key));
+        allProducts.forEach(p => {
+          if (p.category && !knownKeys.has(p.category)) {
+            allCategories.push({ key: p.category, label: p.category, icon: "🏷" });
+            knownKeys.add(p.category);
+          }
+        });
+        buildCategoryUI();
+        renderProducts();
+        renderCategorySections();
+      }, err => {
+        loadingState.innerHTML = `<p style="color:#e53e3e">⚠️ Failed to load products. Check Firebase config.</p>`;
+        console.error(err);
+      });
+    }
+
+    initData();
+
+    // ── CATEGORY SECTIONS (homepage default view) ──
     function renderCategorySections() {
       if (activeCategory !== "all" || searchQuery) return;
       if (allProducts.length === 0) { categorySects.classList.add("hidden"); return; }
+      const order = getCategoryOrder();
       categorySects.innerHTML = "";
       let hasAny = false;
-      CATEGORY_ORDER.forEach(({ key, label }) => {
+      order.forEach(({ key, label, icon }) => {
         const items = allProducts.filter(p => p.category === key);
         if (!items.length) return;
         hasAny = true;
@@ -1147,7 +1150,7 @@
         section.innerHTML = `
           <div class="cat-divider"></div>
           <div class="section-heading">
-            <h2>${label}</h2>
+            <h2>${icon} ${label}</h2>
             <a href="#" class="see-all-link" data-cat="${key}">See All →</a>
           </div>
           <div class="product-grid" id="cat-grid-${key}"></div>`;
@@ -1280,44 +1283,32 @@
       });
       attachCardEvents(grid);
 
-      // Render pagination
       if (totalPages > 1) {
         pagination.innerHTML = "";
         pagination.classList.remove("hidden");
-
         const prevBtn = document.createElement("button");
         prevBtn.className = "page-btn";
         prevBtn.textContent = "‹";
         prevBtn.disabled = currentPage === 1;
-        prevBtn.addEventListener("click", () => { currentPage--; renderProducts(false); window.scrollTo({top: 0, behavior: 'smooth'}); });
+        prevBtn.addEventListener("click", () => { currentPage--; renderProducts(false); window.scrollTo({top: 0, behavior: "smooth"}); });
         pagination.appendChild(prevBtn);
-
         for (let i = 1; i <= totalPages; i++) {
           const btn = document.createElement("button");
           btn.className = "page-btn" + (i === currentPage ? " active" : "");
           btn.textContent = i;
-          btn.addEventListener("click", (function(page){ return function() { currentPage = page; renderProducts(false); window.scrollTo({top: 0, behavior: 'smooth'}); }; })(i));
+          btn.addEventListener("click", (function(page){ return function() { currentPage = page; renderProducts(false); window.scrollTo({top: 0, behavior: "smooth"}); }; })(i));
           pagination.appendChild(btn);
         }
-
         const nextBtn = document.createElement("button");
         nextBtn.className = "page-btn";
         nextBtn.textContent = "›";
         nextBtn.disabled = currentPage === totalPages;
-        nextBtn.addEventListener("click", () => { currentPage++; renderProducts(false); window.scrollTo({top: 0, behavior: 'smooth'}); });
+        nextBtn.addEventListener("click", () => { currentPage++; renderProducts(false); window.scrollTo({top: 0, behavior: "smooth"}); });
         pagination.appendChild(nextBtn);
       }
     }
 
-    function formatCategory(cat) {
-      const builtIn = { "rice-grain":"Rice & Grain","vegetables":"Vegetables",
-               "fish":"Fish","meat":"Meat","oil-spice":"Oil & Spice","dairy":"Dairy","snacks":"Snacks","cold-drinks":"Cold Drinks","tea-and-coffee":"Tea & Coffee" };
-      if (builtIn[cat]) return builtIn[cat];
-      const custom = getCustomCategories().find(c => c.key === cat);
-      return custom ? (custom.icon || "") + " " + custom.label : cat;
-    }
-
-    // ── CATEGORY CHIPS ──
+    // ── CATEGORY CHIP LISTENER (static chips) ──
     document.querySelectorAll(".cat-chip").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll(".cat-chip").forEach(b => b.classList.remove("active"));
@@ -1472,7 +1463,6 @@
       }
     }
 
-    // ── Navigate to order page ──
     function goToOrderPage() {
       saveCart();
       window.location.href = "order.html";
@@ -1488,7 +1478,6 @@
       toastTimer = setTimeout(() => toast.classList.add("hidden"), 3500);
     }
 
-    // Update count on load (in case cart was saved)
     updateCartCount();
 
     // ── HAMBURGER / SIDEBAR ──
@@ -1514,24 +1503,5 @@
       sidebar.classList.contains("open") ? closeSidebar() : openSidebar());
     sidebarClose.addEventListener("click", closeSidebar);
     sidebarOverlay.addEventListener("click", closeSidebar);
-
-    // Sidebar category buttons
-    document.querySelectorAll("[data-sidebar-cat]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        closeSidebar();
-        switchCategory(btn.dataset.sidebarCat);
-      });
-    });
-
-    // Re-attach chip listeners for any remaining dynamically added chips
-    document.querySelectorAll(".cat-chip").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.querySelectorAll(".cat-chip").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        activeCategory = btn.dataset.cat;
-        renderProducts();
-      });
-    });
   </script>
-</body>
-</html>
+          </body>
