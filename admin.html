@@ -219,13 +219,6 @@
               <label>বিভাগ <span class="req">*</span></label>
               <select id="pCategory" required>
                 <option value="">বিভাগ বেছে নিন…</option>
-                <option value="rice-grain">🌾 চাল ও শস্য</option>
-                <option value="vegetables">🥦 সবজি</option>
-                <option value="fish">🐟 মাছ</option>
-                <option value="meat">🥩 মাংস</option>
-                <option value="oil-spice">🫙 তেল ও মশলা</option>
-                <option value="dairy">🥛 দুগ্ধজাত পণ্য</option>
-                <option value="HomeCare">🧴 HomeCare</option>
               </select>
               <span class="err" id="err-pCategory"></span>
             </div>
@@ -442,7 +435,7 @@
              signOut, onAuthStateChanged }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, doc,
-             updateDoc, deleteDoc, serverTimestamp, query, orderBy, onSnapshot }
+             updateDoc, deleteDoc, setDoc, serverTimestamp, query, orderBy, onSnapshot }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { FIREBASE_CONFIG } from "./config.js";
 
@@ -591,15 +584,9 @@
     });
 
     function formatCat(cat) {
-      const map = { "rice-grain":"চাল ও শস্য","vegetables":"সবজি","fish":"মাছ",
-                    "meat":"মাংস","oil-spice":"তেল ও মশলা","dairy":"দুগ্ধজাত পণ্য","HomeCare":"HomeCare" };
-      if (map[cat]) return map[cat];
-      try {
-        const dyn = JSON.parse(localStorage.getItem("mart_custom_categories") || "[]");
-        const found = dyn.find(c => c.key === cat);
-        if (found) return `${found.icon || ""} ${found.label}`;
-      } catch(e) {}
-      return cat;
+      const all = [...BUILTIN_CATS, ...customCatsCache];
+      const found = all.find(c => c.key === cat);
+      return found ? `${found.icon} ${found.label}` : cat;
     }
 
     // ─── IMAGE PREVIEW ────────────────────────────────────────────
@@ -817,15 +804,31 @@
     });
 
     // ─── CATEGORY MANAGEMENT ─────────────────────────────────────
-    function getCustomCategories() {
-      try { return JSON.parse(localStorage.getItem("mart_custom_categories") || "[]"); } catch(e) { return []; }
-    }
-    function saveCustomCategories(cats) {
-      localStorage.setItem("mart_custom_categories", JSON.stringify(cats));
-    }
+    // Built-in categories always present
+    const BUILTIN_CATS = [
+      { key: "rice-grain",     label: "চাল ও শস্য",      icon: "🌾" },
+      { key: "vegetables",     label: "সবজি",             icon: "🥦" },
+      { key: "fish",           label: "মাছ",              icon: "🐟" },
+      { key: "meat",           label: "মাংস",             icon: "🥩" },
+      { key: "oil-spice",      label: "তেল ও মশলা",      icon: "🫙" },
+      { key: "dairy",          label: "দুগ্ধজাত পণ্য",   icon: "🥛" },
+      { key: "snacks",         label: "স্ন্যাকস",         icon: "🍿" },
+      { key: "cold-drinks",    label: "কোল্ড ড্রিংকস",   icon: "🥤" },
+      { key: "tea-and-coffee", label: "চা ও কফি",        icon: "☕" },
+      { key: "HomeCare",       label: "Home Care",        icon: "🧴" },
+    ];
+
+    let customCatsCache = []; // only Firestore-added cats
+
+    // Listen to Firestore categories in real-time
+    onSnapshot(collection(db, "categories"), snap => {
+      customCatsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderCustomCatList();
+      refreshCategorySelect();
+    }, err => console.error("categories listener error:", err));
 
     function renderCustomCatList() {
-      const cats = getCustomCategories();
+      const cats = customCatsCache;
       const list = document.getElementById("customCatList");
       const msg  = document.getElementById("noCatsMsg");
       if (!list) return;
@@ -843,34 +846,41 @@
           " title="Remove">✕</button>`;
         list.appendChild(pill);
       });
-      // Also inject into the product form's category select
-      refreshCategorySelect();
     }
-
-    window.removeCustomCat = function(key) {
-      if (!confirm("এই বিভাগটি সরাবেন?")) return;
-      const cats = getCustomCategories().filter(c => c.key !== key);
-      saveCustomCategories(cats);
-      renderCustomCatList();
-      showToast("🗑 বিভাগ সরানো হয়েছে।");
-    };
 
     function refreshCategorySelect() {
       const sel = document.getElementById("pCategory");
       if (!sel) return;
-      // Remove previously added dynamic options
-      sel.querySelectorAll("[data-dynamic]").forEach(o => o.remove());
-      const cats = getCustomCategories();
-      cats.forEach(cat => {
-        if (!sel.querySelector(`option[value="${cat.key}"]`)) {
+      // Save current value
+      const current = sel.value;
+      sel.innerHTML = '<option value="">বিভাগ বেছে নিন…</option>';
+      // Add builtins
+      BUILTIN_CATS.forEach(cat => {
+        const opt = document.createElement("option");
+        opt.value = cat.key;
+        opt.textContent = `${cat.icon} ${cat.label}`;
+        sel.appendChild(opt);
+      });
+      // Add custom Firestore cats
+      customCatsCache.forEach(cat => {
+        if (!BUILTIN_CATS.find(b => b.key === cat.key)) {
           const opt = document.createElement("option");
           opt.value = cat.key;
           opt.textContent = `${cat.icon || "🏷"} ${cat.label}`;
-          opt.dataset.dynamic = "1";
           sel.appendChild(opt);
         }
       });
+      // Restore selection
+      if (current) sel.value = current;
     }
+
+    window.removeCustomCat = async function(key) {
+      if (!confirm("এই বিভাগটি সরাবেন?")) return;
+      try {
+        await deleteDoc(doc(db, "categories", key));
+        showToast("🗑 বিভাগ সরানো হয়েছে।");
+      } catch(err) { showToast("⚠️ " + err.message); }
+    };
 
     // Add Category Modal
     const addCatModal = document.getElementById("addCatModal");
@@ -894,7 +904,7 @@
         .replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
     });
 
-    document.getElementById("confirmAddCat").addEventListener("click", () => {
+    document.getElementById("confirmAddCat").addEventListener("click", async () => {
       const label = document.getElementById("newCatLabel").value.trim();
       const key   = document.getElementById("newCatKey").value.trim();
       const icon  = document.getElementById("newCatIcon").value.trim() || "🏷";
@@ -902,19 +912,16 @@
       if (!label) { document.getElementById("err-newCatLabel").textContent = "বিভাগের নাম দিন।"; ok = false; }
       if (!key || !/^[a-z0-9-]+$/.test(key)) { document.getElementById("err-newCatKey").textContent = "Valid key দিন (lowercase, hyphens only)."; ok = false; }
       if (!ok) return;
-      const cats = getCustomCategories();
-      if (cats.find(c => c.key === key)) {
+      if (customCatsCache.find(c => c.key === key)) {
         document.getElementById("err-newCatKey").textContent = "এই key ইতিমধ্যে আছে।"; return;
       }
-      cats.push({ key, label, icon });
-      saveCustomCategories(cats);
-      renderCustomCatList();
-      addCatModal.classList.add("hidden");
-      showToast(`✅ "${label}" বিভাগ যোগ হয়েছে! এটি index.html-এ দেখা যাবে।`);
+      try {
+        // Use key as document ID so it's easy to delete by key
+        await setDoc(doc(db, "categories", key), { key, label, icon });
+        addCatModal.classList.add("hidden");
+        showToast(`✅ "${label}" বিভাগ যোগ হয়েছে!`);
+      } catch(err) { showToast("⚠️ " + err.message); }
     });
-
-    // Init on load
-    renderCustomCatList();
 
     // ─── TOAST ───────────────────────────────────────────────────
     let toastTimer;
@@ -927,4 +934,4 @@
     }
   </script>
 </body>
-</html>
+  </html>
