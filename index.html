@@ -435,52 +435,76 @@
 
     // ── STATE ──
     let allProducts   = [];
-    let allCategories = []; // from Firestore — each has: key, label, icon, image, parentKey (optional)
+    let allCategories = [];
     let cart = [];
-    let currentView = "home"; // "home" | "sub" | "search"
-    let navStack = []; // [{key, label, icon}] breadcrumb trail
+    let currentView = "home";
+    let navStack = [];
     let currentPage = 1;
     const PAGE_SIZE = 12;
     const cardSelectedVariant = {};
     let searchQuery = "";
+    // Flag to prevent pushState during popstate-driven navigation
+    let _isPopState = false;
 
-    // Built-in root categories (fallback if Firestore empty)
     const BUILTIN_CATS = [
       { key: "rice-grain",      label: "Rice & Grain",     icon: "🌾", parentKey: null },
       { key: "vegetables",      label: "Vegetables",       icon: "🥦", parentKey: null },
-       
       { key: "oil-spice",       label: "Oil & Spice",      icon: "🫙", parentKey: null },
       { key: "dairy",           label: "Dairy",            icon: "🥛", parentKey: null },
-      
-     
       { key: "tea-and-coffee",  label: "Tea & Coffee",     icon: "☕", parentKey: null },
       { key: "HomeCare",        label: "Home Care",        icon: "🧴", parentKey: null },
     ];
 
     try { const s = localStorage.getItem("mart_cart"); if (s) cart = JSON.parse(s); } catch(e) {}
 
+    // ── HISTORY API ──
+    // Push a state entry whenever the user navigates inside the SPA.
+    // State shape: { catKey: "home" | "<key>", page: 1 }
+    function pushNav(catKey, page) {
+      if (_isPopState) return; // don't double-push during popstate handling
+      const state = { catKey, page: page || 1 };
+      const url = catKey === "home" ? "#" : `#cat/${encodeURIComponent(catKey)}`;
+      history.pushState(state, "", url);
+    }
+
+    // Restore the view described by a history state object
+    function restoreState(state) {
+      if (!state) { _navigateHome(); return; }
+      const { catKey, page } = state;
+      if (!catKey || catKey === "home") {
+        _navigateHome();
+      } else {
+        currentPage = page || 1;
+        _navigateCat(catKey);
+      }
+    }
+
+    // Browser back / forward button handler
+    window.addEventListener("popstate", e => {
+      // Close modal if open
+      document.getElementById("productModalOverlay").classList.add("hidden");
+      _isPopState = true;
+      restoreState(e.state);
+      _isPopState = false;
+    });
+
     // ── HELPERS ──
     function getCat(key) {
       return allCategories.find(c => c.key === key) || BUILTIN_CATS.find(c => c.key === key) || null;
     }
     function getRootCats() {
-      // All cats with no parentKey (or parentKey = null/"")
-      const merged = getMergedCats();
-      return merged.filter(c => !c.parentKey);
+      return getMergedCats().filter(c => !c.parentKey);
     }
     function getChildCats(parentKey) {
-      const merged = getMergedCats();
-      return merged.filter(c => c.parentKey === parentKey);
+      return getMergedCats().filter(c => c.parentKey === parentKey);
     }
     function getMergedCats() {
-      // Start with builtins, override/extend with Firestore cats
       const map = new Map();
       BUILTIN_CATS.forEach(c => map.set(c.key, {...c}));
-      allCategories.forEach(c => map.set(c.key, {...c})); // Firestore overrides
+      allCategories.forEach(c => map.set(c.key, {...c}));
       return Array.from(map.values());
     }
     function getProductsInCatTree(catKey) {
-      // Return all products whose category matches catKey OR any descendant
       const descendants = getAllDescendantKeys(catKey);
       descendants.add(catKey);
       return allProducts.filter(p => descendants.has(p.category));
@@ -488,10 +512,7 @@
     function getAllDescendantKeys(catKey) {
       const set = new Set();
       function recurse(key) {
-        getChildCats(key).forEach(c => {
-          set.add(c.key);
-          recurse(c.key);
-        });
+        getChildCats(key).forEach(c => { set.add(c.key); recurse(c.key); });
       }
       recurse(catKey);
       return set;
@@ -509,30 +530,39 @@
       currentView = view;
     }
 
-    // Navigate to a category
-    window.navigateTo = function(catKey) {
-      if (catKey === "home") {
-        navStack = [];
-        renderBreadcrumb();
-        renderHomeView();
-        return;
-      }
+    // Internal helpers that don't touch history (called by both user navigation AND popstate restore)
+    function _navigateHome() {
+      navStack = [];
+      renderBreadcrumb();
+      renderHomeView();
+    }
+
+    function _navigateCat(catKey) {
       const cat = getCat(catKey);
-      if (!cat) return;
-      // Build navStack
+      if (!cat) { _navigateHome(); return; }
       navStack = buildNavStack(catKey);
       renderBreadcrumb();
-
       const children = getChildCats(catKey);
       if (children.length > 0) {
         renderSubCatView(catKey, children);
       } else {
         renderProductsView(catKey);
       }
+    }
+
+    // Public navigateTo — also pushes history
+    window.navigateTo = function(catKey) {
+      if (catKey === "home") {
+        pushNav("home");
+        _navigateHome();
+        return;
+      }
+      pushNav(catKey, 1);
+      currentPage = 1;
+      _navigateCat(catKey);
     };
 
     function buildNavStack(key) {
-      // Build path from root to key
       const stack = [];
       let current = getCat(key);
       while (current) {
@@ -564,7 +594,7 @@
       });
     }
 
-    // ── HOME VIEW: show root categories ──
+    // ── HOME VIEW ──
     function renderHomeView() {
       showView("home");
       const grid = document.getElementById("homeCatGrid");
@@ -586,11 +616,7 @@
 <div class="cat-card-body">
   <div class="cat-card-name">${cat.label}</div>
   <div class="cat-card-count">
-    ${
-      childCount > 0
-        ? `${childCount} sub-categor${childCount !== 1 ? "ies" : "y"}`
-        : `${productCount} products`
-    }
+    ${childCount > 0 ? `${childCount} sub-categor${childCount !== 1 ? "ies" : "y"}` : `${productCount} products`}
   </div>
   <div class="cat-card-arrow">${childCount > 0 ? "📂 →" : "🛍 →"}</div>
 </div>`;
@@ -608,10 +634,7 @@
       document.getElementById("subProductGrid").classList.add("hidden");
       document.getElementById("pagination").classList.add("hidden");
 
-      document.getElementById("backBtn").onclick = () => {
-        if (navStack.length <= 1) navigateTo("home");
-        else navigateTo(navStack[navStack.length - 2].key);
-      };
+      document.getElementById("backBtn").onclick = () => history.back();
 
       const grid = document.getElementById("subCatGrid");
       grid.innerHTML = "";
@@ -645,10 +668,7 @@
       document.getElementById("subCatGrid").classList.add("hidden");
       document.getElementById("subProductGrid").classList.remove("hidden");
 
-      document.getElementById("backBtn").onclick = () => {
-        if (navStack.length <= 1) navigateTo("home");
-        else navigateTo(navStack[navStack.length - 2].key);
-      };
+      document.getElementById("backBtn").onclick = () => history.back();
 
       if (reset) currentPage = 1;
       const products = getProductsInCatTree(catKey);
@@ -680,18 +700,34 @@
         pag.classList.remove("hidden");
         const prevBtn = document.createElement("button");
         prevBtn.className = "page-btn"; prevBtn.textContent = "‹"; prevBtn.disabled = currentPage === 1;
-        prevBtn.addEventListener("click", () => { currentPage--; renderProductsView(catKey, false); window.scrollTo({top:0,behavior:"smooth"}); });
+        prevBtn.addEventListener("click", () => {
+          currentPage--;
+          // Replace the current history entry with the new page number
+          history.replaceState({ catKey, page: currentPage }, "", `#cat/${encodeURIComponent(catKey)}`);
+          renderProductsView(catKey, false);
+          window.scrollTo({top:0,behavior:"smooth"});
+        });
         pag.appendChild(prevBtn);
         for (let pg = 1; pg <= totalPages; pg++) {
           const btn = document.createElement("button");
           btn.className = "page-btn" + (pg === currentPage ? " active" : "");
           btn.textContent = pg;
-          btn.addEventListener("click", (function(p){ return function() { currentPage = p; renderProductsView(catKey, false); window.scrollTo({top:0,behavior:"smooth"}); }; })(pg));
+          btn.addEventListener("click", (function(p){ return function() {
+            currentPage = p;
+            history.replaceState({ catKey, page: currentPage }, "", `#cat/${encodeURIComponent(catKey)}`);
+            renderProductsView(catKey, false);
+            window.scrollTo({top:0,behavior:"smooth"});
+          }; })(pg));
           pag.appendChild(btn);
         }
         const nextBtn = document.createElement("button");
         nextBtn.className = "page-btn"; nextBtn.textContent = "›"; nextBtn.disabled = currentPage === totalPages;
-        nextBtn.addEventListener("click", () => { currentPage++; renderProductsView(catKey, false); window.scrollTo({top:0,behavior:"smooth"}); });
+        nextBtn.addEventListener("click", () => {
+          currentPage++;
+          history.replaceState({ catKey, page: currentPage }, "", `#cat/${encodeURIComponent(catKey)}`);
+          renderProductsView(catKey, false);
+          window.scrollTo({top:0,behavior:"smooth"});
+        });
         pag.appendChild(nextBtn);
       }
     }
@@ -732,7 +768,6 @@
       doSearch(e.target.value);
     });
 
-    // Mobile search toggle
     if (window.innerWidth <= 640) document.getElementById("mobileSearchWrap").style.display = "block";
 
     // ── CARD BUILDER ──
@@ -903,33 +938,34 @@
 
     // ── FIRESTORE DATA LOAD ──
     async function initData() {
-      // Load categories
       try {
         const catSnap = await getDocs(collection(db, "categories"));
         allCategories = catSnap.docs.map(d => ({ key: d.id, ...d.data() }));
       } catch(e) { console.warn("Could not load categories:", e.message); }
 
-      // Products real-time listener
       const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
       onSnapshot(q, snap => {
         allProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         document.getElementById("loadingState").classList.add("hidden");
         buildSidebarCats();
-        // Render current view
+        // Re-render current view with fresh data
         if (currentView === "home") renderHomeView();
-        else if (currentView === "sub" && navStack.length > 0) navigateTo(navStack[navStack.length - 1].key);
+        else if (currentView === "sub" && navStack.length > 0) _navigateCat(navStack[navStack.length - 1].key);
       }, err => {
         document.getElementById("loadingState").innerHTML = `<p style="color:#e53e3e">⚠️ Failed to load. Check Firebase config.</p>`;
       });
     }
 
+    // ── INIT ──
     updateCartCount();
-    initData().then(() => {
-      // Initial home view after categories loaded
-    });
 
-    // Show home view initially (before products load)
+    // Seed the initial history entry so popstate has something to go back to
+    history.replaceState({ catKey: "home", page: 1 }, "", "#");
+
+    // Show home view immediately (before Firebase loads)
     renderHomeView();
+
+    initData();
   </script>
 </body>
 </html>
